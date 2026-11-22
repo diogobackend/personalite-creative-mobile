@@ -98,12 +98,12 @@ const cashFlowMetrics: Metric[] = [
 const sidebarNavigation: {
   label: string;
   icon: IconName;
-  route?: '/home' | '/produtos' | '/categorias';
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas';
 }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', route: '/categorias' },
-  { label: 'Vendas', icon: 'bag-handle-outline' },
+  { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline' },
   { label: 'Clientes', icon: 'people-outline' },
   { label: 'Estoque', icon: 'layers-outline' },
@@ -369,7 +369,7 @@ export default function HomeScreen() {
 
   const openPage = (
   label: string,
-  route?: '/home' | '/produtos' | '/categorias'
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas'
 ) => {
   setMenuOpen(false);
 

@@ -25,11 +25,11 @@ const GROUPS: { type: CategoryType; title: string; icon: IconName; tint: string;
   { type: 'EXPENSE', title: 'Despesas', icon: 'receipt-outline', tint: '#fffbeb', border: '#fde68a', header: '#fef3c7' },
 ];
 const LABELS: Record<CategoryType, string> = { PRODUCT: 'Produtos', INVENTORY: 'Estoque', EXPENSE: 'Despesas' };
-const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' }[] = [
+const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' | '/vendas' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', url: '/home' },
   { label: 'Produtos', icon: 'cube-outline', url: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', url: '/categorias' },
-  { label: 'Vendas', icon: 'bag-handle-outline' },
+  { label: 'Vendas', icon: 'bag-handle-outline', url: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline' },
   { label: 'Clientes', icon: 'people-outline' },
   { label: 'Estoque', icon: 'layers-outline' },
@@ -189,7 +189,7 @@ export default function CategoriasScreen() {
     router.replace('/');
   }
 
-  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias') {
+  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas') {
     setMenuOpen(false);
     if (url) {
       if (url !== '/categorias') router.push(url);
