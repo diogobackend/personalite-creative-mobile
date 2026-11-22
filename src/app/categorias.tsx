@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import {
-    ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -25,12 +25,12 @@ const GROUPS: { type: CategoryType; title: string; icon: IconName; tint: string;
   { type: 'EXPENSE', title: 'Despesas', icon: 'receipt-outline', tint: '#fffbeb', border: '#fde68a', header: '#fef3c7' },
 ];
 const LABELS: Record<CategoryType, string> = { PRODUCT: 'Produtos', INVENTORY: 'Estoque', EXPENSE: 'Despesas' };
-const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' | '/vendas' }[] = [
+const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', url: '/home' },
   { label: 'Produtos', icon: 'cube-outline', url: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', url: '/categorias' },
   { label: 'Vendas', icon: 'bag-handle-outline', url: '/vendas' },
-  { label: 'Histórico Financeiro', icon: 'card-outline' },
+  { label: 'Histórico Financeiro', icon: 'card-outline', url: '/movimentacoes' },
   { label: 'Clientes', icon: 'people-outline' },
   { label: 'Estoque', icon: 'layers-outline' },
   { label: 'Despesas', icon: 'wallet-outline' },
@@ -189,7 +189,7 @@ export default function CategoriasScreen() {
     router.replace('/');
   }
 
-  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas') {
+  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes') {
     setMenuOpen(false);
     if (url) {
       if (url !== '/categorias') router.push(url);

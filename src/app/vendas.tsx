@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-    ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -93,12 +93,12 @@ const DATES: { field: keyof Filters; label: string }[] = [
   { field: 'deliveryDeadlineFrom', label: 'Entrega de' }, { field: 'deliveryDeadlineTo', label: 'Entrega até' },
   { field: 'createdAtFrom', label: 'Cadastro de' }, { field: 'createdAtTo', label: 'Cadastro até' },
 ];
-const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' }[] = [
+const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', route: '/categorias' },
   { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
-  { label: 'Histórico Financeiro', icon: 'card-outline' },
+  { label: 'Histórico Financeiro', icon: 'card-outline', route: '/movimentacoes' },
   { label: 'Clientes', icon: 'people-outline' },
   { label: 'Estoque', icon: 'layers-outline' },
   { label: 'Despesas', icon: 'wallet-outline' },
@@ -225,7 +225,7 @@ export default function VendasScreen() {
   const currentPage = pagination?.page ?? page;
   const first = total ? currentPage * size + 1 : 0;
   const last = total ? Math.min(first + (result?.sales?.length ?? 0) - 1, total) : 0;
-  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas') => {
+  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes') => {
     setMenuOpen(false);
     if (route) router.push(route);
     else Alert.alert(label, 'Esta seção ainda não foi implementada no aplicativo mobile.');
