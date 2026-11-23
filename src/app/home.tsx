@@ -98,14 +98,14 @@ const cashFlowMetrics: Metric[] = [
 const sidebarNavigation: {
   label: string;
   icon: IconName;
-  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes';
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes';
 }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', route: '/categorias' },
   { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline', route: '/movimentacoes' },
-  { label: 'Clientes', icon: 'people-outline' },
+  { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline' },
   { label: 'Despesas', icon: 'wallet-outline' },
   { label: 'Relatórios', icon: 'stats-chart-outline' },
@@ -369,7 +369,7 @@ export default function HomeScreen() {
 
   const openPage = (
   label: string,
-  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes'
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes'
 ) => {
   setMenuOpen(false);
 
