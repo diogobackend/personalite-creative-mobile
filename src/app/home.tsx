@@ -98,7 +98,7 @@ const cashFlowMetrics: Metric[] = [
 const sidebarNavigation: {
   label: string;
   icon: IconName;
-  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes';
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque';
 }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
@@ -106,7 +106,7 @@ const sidebarNavigation: {
   { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline', route: '/movimentacoes' },
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
-  { label: 'Estoque', icon: 'layers-outline' },
+  { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline' },
   { label: 'Relatórios', icon: 'stats-chart-outline' },
 ];
@@ -369,7 +369,7 @@ export default function HomeScreen() {
 
   const openPage = (
   label: string,
-  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes'
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque'
 ) => {
   setMenuOpen(false);
 

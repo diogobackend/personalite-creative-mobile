@@ -92,7 +92,7 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline', route: '/movimentacoes' },
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
-  { label: 'Estoque', icon: 'layers-outline' },
+  { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline' },
   { label: 'Relatórios', icon: 'stats-chart-outline' },
 ];

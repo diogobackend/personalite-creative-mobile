@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -71,7 +71,7 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Vendas', icon: 'bag-handle-outline', route: '/vendas' },
   { label: 'Histórico Financeiro', icon: 'card-outline', route: '/movimentacoes' },
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
-  { label: 'Estoque', icon: 'layers-outline' },
+  { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline' },
   { label: 'Relatórios', icon: 'stats-chart-outline' },
 ];
