@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-    ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -82,7 +82,7 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
-  { label: 'Relatórios', icon: 'stats-chart-outline' },
+  { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 const money = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const dateLabel = (value: string | null | undefined) => {

@@ -162,7 +162,7 @@ export default function ProdutosScreen() {
     return () => { mounted = false; };
   }, []);
 
-  const openMenuPage = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas') => {
+  const openMenuPage = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') => {
     setMenuOpen(false);
     if (route) { router.navigate(route); return; }
     Alert.alert(label, 'Esta seção ainda não foi implementada no aplicativo mobile.');
@@ -374,8 +374,8 @@ export default function ProdutosScreen() {
               { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
               { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
               { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
-              { label: 'Relatórios', icon: 'stats-chart-outline' },
-            ] as { label: string; icon: keyof typeof Ionicons.glyphMap; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' }[]).map(item => (
+              { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
+            ] as { label: string; icon: keyof typeof Ionicons.glyphMap; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' }[]).map(item => (
               <Pressable key={item.label} onPress={() => openMenuPage(item.label, item.route)}
                 style={[styles.drawerItem, item.route === '/produtos' && styles.drawerItemActive]} accessibilityRole="button">
                 <Ionicons name={item.icon} size={19} color={item.route === '/produtos' ? '#fff' : '#d8d0c6'} />

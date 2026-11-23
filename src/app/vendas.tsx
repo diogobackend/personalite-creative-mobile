@@ -93,7 +93,7 @@ const DATES: { field: keyof Filters; label: string }[] = [
   { field: 'deliveryDeadlineFrom', label: 'Entrega de' }, { field: 'deliveryDeadlineTo', label: 'Entrega até' },
   { field: 'createdAtFrom', label: 'Cadastro de' }, { field: 'createdAtTo', label: 'Cadastro até' },
 ];
-const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' }[] = [
+const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', route: '/categorias' },
@@ -102,7 +102,7 @@ const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/c
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
-  { label: 'Relatórios', icon: 'stats-chart-outline' },
+  { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 const fmtMoney = (value: number | null | undefined) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0));
 const fmtDate = (value?: string | null) => {
@@ -225,7 +225,7 @@ export default function VendasScreen() {
   const currentPage = pagination?.page ?? page;
   const first = total ? currentPage * size + 1 : 0;
   const last = total ? Math.min(first + (result?.sales?.length ?? 0) - 1, total) : 0;
-  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas') => {
+  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') => {
     setMenuOpen(false);
     if (route) router.push(route);
     else Alert.alert(label, 'Esta seção ainda não foi implementada no aplicativo mobile.');

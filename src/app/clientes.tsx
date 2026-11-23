@@ -73,7 +73,7 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
-  { label: 'Relatórios', icon: 'stats-chart-outline' },
+  { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 
 function visibleEmail(value: string | null): string {

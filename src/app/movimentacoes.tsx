@@ -94,7 +94,7 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Clientes', icon: 'people-outline', route: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline', route: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
-  { label: 'Relatórios', icon: 'stats-chart-outline' },
+  { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 const money = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 const dateTime = (raw: string) => {

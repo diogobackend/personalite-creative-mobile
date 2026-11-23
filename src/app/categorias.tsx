@@ -25,7 +25,7 @@ const GROUPS: { type: CategoryType; title: string; icon: IconName; tint: string;
   { type: 'EXPENSE', title: 'Despesas', icon: 'receipt-outline', tint: '#fffbeb', border: '#fde68a', header: '#fef3c7' },
 ];
 const LABELS: Record<CategoryType, string> = { PRODUCT: 'Produtos', INVENTORY: 'Estoque', EXPENSE: 'Despesas' };
-const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' }[] = [
+const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', url: '/home' },
   { label: 'Produtos', icon: 'cube-outline', url: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', url: '/categorias' },
@@ -34,7 +34,7 @@ const MENU_ITEMS: { label: string; icon: IconName; url?: '/home' | '/produtos' |
   { label: 'Clientes', icon: 'people-outline', url: '/clientes' },
   { label: 'Estoque', icon: 'layers-outline', url: '/estoque' },
   { label: 'Despesas', icon: 'wallet-outline', url: '/despesas' },
-  { label: 'Relatórios', icon: 'stats-chart-outline' },
+  { label: 'Relatórios', icon: 'stats-chart-outline', url: '/relatorios' },
 ];
 
 function errorMessage(error: unknown, action: string): string {
@@ -189,7 +189,7 @@ export default function CategoriasScreen() {
     router.replace('/');
   }
 
-  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas') {
+  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') {
     setMenuOpen(false);
     if (url) {
       if (url !== '/categorias') router.push(url);
