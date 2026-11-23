@@ -419,7 +419,7 @@ export default function DespesasScreen() {
               <Text style={s.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={s.drawerSection}>SISTEMA</Text>
-            <Pressable style={s.drawerItem} onPress={() => navigate('Meu Perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db"/><Text style={s.drawerItemText}>Meu Perfil</Text></Pressable>
+            <Pressable style={s.drawerItem} onPress={() => navigate('Meu Perfil', '/perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db"/><Text style={s.drawerItemText}>Meu Perfil</Text></Pressable>
           </ScrollView>
           <Pressable style={s.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Sair</Text></Pressable>
         </SafeAreaView>

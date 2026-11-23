@@ -111,11 +111,11 @@ const sidebarNavigation: {
   { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 
-const shortcuts: { title: string; description: string; icon: IconName }[] = [
-  { title: 'Cadastrar produto', description: 'Adicionar novo item', icon: 'gift-outline' },
-  { title: 'Registrar venda', description: 'Criar novo pedido', icon: 'bag-outline' },
-  { title: 'Lançar despesa', description: 'Registrar um gasto', icon: 'clipboard-outline' },
-  { title: 'Ver relatórios', description: 'Analisar resultados', icon: 'analytics-outline' },
+const shortcuts: { title: string; description: string; icon: IconName; route: string }[] = [
+  { title: 'Cadastrar produto', description: 'Adicionar novo item', icon: 'gift-outline', route: '/produtos/novo' },
+  { title: 'Registrar venda', description: 'Criar novo pedido', icon: 'bag-outline', route: '/vendas/nova' },
+  { title: 'Lançar despesa', description: 'Registrar um gasto', icon: 'clipboard-outline', route: '/despesas/nova' },
+  { title: 'Ver relatórios', description: 'Analisar resultados', icon: 'analytics-outline', route: '/relatorios' },
 ];
 
 function isTokenExpired(token: string): boolean {
@@ -369,7 +369,7 @@ export default function HomeScreen() {
 
   const openPage = (
   label: string,
-  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios'
+  route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' | '/perfil'
 ) => {
   setMenuOpen(false);
 
@@ -543,17 +543,25 @@ export default function HomeScreen() {
           </View>
         </Section>
 
-        <Section title="Acesso rápido" subtitle="Principais operações do negócio">
-          {shortcuts.map((item) => (
-            <View key={item.title} style={styles.shortcutCard}>
-              <View style={styles.iconBox}><Ionicons name={item.icon} size={21} color={COLORS.gold} /></View>
-              <View style={styles.shortcutContent}>
-                <Text style={styles.shortcutTitle}>{item.title}</Text>
-                <Text style={styles.shortcutDescription}>{item.description}</Text>
-              </View>
+              
+      <Section title="Acesso rápido" subtitle="Principais operações do negócio">
+        {shortcuts.map((item) => (
+          <Pressable
+            key={item.title}
+            style={styles.shortcutCard}
+            onPress={() => router.push(item.route as never)}
+          >
+            <View style={styles.iconBox}>
+              <Ionicons name={item.icon} size={21} color={COLORS.gold} />
             </View>
-          ))}
-        </Section>
+            <View style={styles.shortcutContent}>
+              <Text style={styles.shortcutTitle}>{item.title}</Text>
+              <Text style={styles.shortcutDescription}>{item.description}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </Section>
+
 
         <Text style={styles.footer}>Personalité Creative · Sistema de gestão</Text>
       </ScrollView>
@@ -600,7 +608,7 @@ export default function HomeScreen() {
                 </Pressable>
               ))}
               <Text style={[styles.drawerSection, styles.drawerSystem]}>SISTEMA</Text>
-              <Pressable style={styles.drawerItem} onPress={() => openPage('Meu Perfil')}>
+              <Pressable style={styles.drawerItem} onPress={() => openPage('Meu Perfil', '/perfil')}>
                 <Ionicons name="settings-outline" size={19} color="#d8d0c6" />
                 <Text style={styles.drawerItemText}>Meu Perfil</Text>
               </Pressable>

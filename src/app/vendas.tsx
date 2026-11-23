@@ -93,7 +93,7 @@ const DATES: { field: keyof Filters; label: string }[] = [
   { field: 'deliveryDeadlineFrom', label: 'Entrega de' }, { field: 'deliveryDeadlineTo', label: 'Entrega até' },
   { field: 'createdAtFrom', label: 'Cadastro de' }, { field: 'createdAtTo', label: 'Cadastro até' },
 ];
-const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' }[] = [
+const MENU: { label: string; icon: IconName; route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' | '/perfil' }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
   { label: 'Categorias', icon: 'pricetags-outline', route: '/categorias' },
@@ -225,7 +225,7 @@ export default function VendasScreen() {
   const currentPage = pagination?.page ?? page;
   const first = total ? currentPage * size + 1 : 0;
   const last = total ? Math.min(first + (result?.sales?.length ?? 0) - 1, total) : 0;
-  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') => {
+  const navigate = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' | '/perfil') => {
     setMenuOpen(false);
     if (route) router.push(route);
     else Alert.alert(label, 'Esta seção ainda não foi implementada no aplicativo mobile.');
@@ -379,7 +379,7 @@ export default function VendasScreen() {
               <Ionicons name={item.icon} size={19} color="#eee7db" /><Text style={styles.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={styles.drawerSection}>SISTEMA</Text>
-            <Pressable style={styles.drawerItem} onPress={() => navigate('Meu Perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={styles.drawerItemText}>Meu Perfil</Text></Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => navigate('Meu Perfil', '/perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={styles.drawerItemText}>Meu Perfil</Text></Pressable>
           </ScrollView>
           <Pressable style={styles.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db" /><Text style={styles.drawerItemText}>Sair</Text></Pressable>
         </SafeAreaView>

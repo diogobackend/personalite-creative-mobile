@@ -345,7 +345,7 @@ export default function ClientesScreen() {
               <Text style={s.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={s.drawerSection}>SISTEMA</Text>
-            <Pressable style={s.drawerItem} onPress={() => openMenu('Meu Perfil')}>
+            <Pressable style={s.drawerItem} onPress={() => openMenu('Meu Perfil', '/perfil')}>
               <Ionicons name="settings-outline" size={20} color="#eee7db" />
               <Text style={s.drawerItemText}>Meu Perfil</Text>
             </Pressable>

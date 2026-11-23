@@ -392,7 +392,7 @@ export default function EstoqueScreen() {
               <Text style={styles.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={[styles.drawerSection, styles.drawerSystem]}>SISTEMA</Text>
-            <Pressable style={styles.drawerItem} onPress={() => openMenu('Meu Perfil')}>
+            <Pressable style={styles.drawerItem} onPress={() => openMenu('Meu Perfil', '/perfil')}>
               <Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={styles.drawerItemText}>Meu Perfil</Text>
             </Pressable>
           </ScrollView>

@@ -351,7 +351,7 @@ export default function RelatoriosScreen() {
           <ScrollView style={s.drawerScroll} contentContainerStyle={s.drawerContent}><Text style={s.drawerSection}>MENU PRINCIPAL</Text>
             {MENU.map(item => <Pressable key={item.label} onPress={() => navigate(item.route, item.label)} style={[s.drawerItem, item.route === '/relatorios' && s.drawerActive]}>
               <Ionicons name={item.icon} size={20} color="#eee7db"/><Text style={s.drawerItemText}>{item.label}</Text></Pressable>)}
-            <Text style={s.drawerSection}>SISTEMA</Text><Pressable style={s.drawerItem} onPress={() => navigate(undefined, 'Meu Perfil')}><Ionicons name="settings-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Meu Perfil</Text></Pressable>
+            <Text style={s.drawerSection}>SISTEMA</Text><Pressable style={s.drawerItem} onPress={() => navigate('/perfil', 'Meu Perfil')}><Ionicons name="settings-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Meu Perfil</Text></Pressable>
           </ScrollView>
           <Pressable style={s.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Sair</Text></Pressable>
         </SafeAreaView>

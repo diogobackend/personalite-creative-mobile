@@ -162,7 +162,7 @@ export default function ProdutosScreen() {
     return () => { mounted = false; };
   }, []);
 
-  const openMenuPage = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') => {
+  const openMenuPage = (label: string, route?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' | '/perfil') => {
     setMenuOpen(false);
     if (route) { router.navigate(route); return; }
     Alert.alert(label, 'Esta seção ainda não foi implementada no aplicativo mobile.');
@@ -383,7 +383,7 @@ export default function ProdutosScreen() {
               </Pressable>
             ))}
             <BRText style={[styles.drawerSection, styles.drawerSystem]}>SISTEMA</BRText>
-            <Pressable style={styles.drawerItem} onPress={() => openMenuPage('Meu Perfil')}>
+            <Pressable style={styles.drawerItem} onPress={() => openMenuPage('Meu Perfil', '/perfil')}>
               <Ionicons name="settings-outline" size={19} color="#d8d0c6" />
               <BRText style={styles.drawerItemText}>Meu Perfil</BRText>
             </Pressable>

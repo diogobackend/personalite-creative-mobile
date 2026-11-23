@@ -449,7 +449,7 @@ export default function MovimentacoesScreen() {
               <Text style={s.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={s.drawerSection}>SISTEMA</Text>
-            <Pressable onPress={() => openMenu('Meu Perfil')} style={s.drawerItem}>
+            <Pressable onPress={() => openMenu('Meu Perfil', '/perfil')} style={s.drawerItem}>
               <Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={s.drawerItemText}>Meu Perfil</Text>
             </Pressable>
           </ScrollView>

@@ -189,7 +189,7 @@ export default function CategoriasScreen() {
     router.replace('/');
   }
 
-  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios') {
+  function navigateMenu(label: string, url?: '/home' | '/produtos' | '/categorias' | '/vendas' | '/movimentacoes' | '/clientes' | '/estoque' | '/despesas' | '/relatorios' | '/perfil') {
     setMenuOpen(false);
     if (url) {
       if (url !== '/categorias') router.push(url);
@@ -380,7 +380,7 @@ export default function CategoriasScreen() {
               </Pressable>
             ))}
             <Text style={[styles.drawerSection, { marginTop: 24 }]}>SISTEMA</Text>
-            <Pressable style={styles.drawerItem} onPress={() => navigateMenu('Meu Perfil')}>
+            <Pressable style={styles.drawerItem} onPress={() => navigateMenu('Meu Perfil', '/perfil')}>
               <Ionicons name="settings-outline" size={20} color="#d8d0c6" />
               <Text style={styles.drawerItemText}>Meu Perfil</Text>
             </Pressable>
