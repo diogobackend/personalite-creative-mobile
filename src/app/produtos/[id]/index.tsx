@@ -99,14 +99,27 @@ function Detail({ title, value }: { title: string; value: string | number }) {
     <Body style={styles.detailValue}>{value}</Body>
   </View>;
 }
+
 function HeaderButton({ label, icon, onPress, primary = false }: {
-  label: string; icon: IconName; onPress: () => void; primary?: boolean;
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+  primary?: boolean;
 }) {
-  return <Pressable onPress={onPress} accessibilityRole="button" style={[styles.headerButton, primary && styles.primaryButton]}>
-    <Ionicons name={icon} size={18} color={primary ? '#fff' : C.gold} />
-    <Text style={[styles.headerButtonText, primary && styles.primaryText]}>{label}</Text>
-  </Pressable>;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={[styles.headerButton, primary && styles.primaryButton]}
+    >
+      <Ionicons name={icon} size={18} color={primary ? '#fff' : C.gold} />
+      <Text style={[styles.headerButtonText, primary && styles.primaryText]}>
+        {label}{'\u00A0\u00A0\u00A0'}
+      </Text>
+    </Pressable>
+  );
 }
+
 function Variation({ item }: { item: InventoryItem }) {
   const value = [item.color, item.size, item.material, item.brand, item.model].map(s => s?.trim()).filter(Boolean).join(' · ');
   return <Body style={styles.mutedText}>{value || 'Sem variação'}</Body>;
@@ -549,7 +562,16 @@ const styles = StyleSheet.create({
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 20, marginBottom: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   productIcon: { width: 48, height: 48, backgroundColor: '#f7f0e6', borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   heroText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 21, lineHeight: 30, fontWeight: '700', color: C.text, includeFontPadding: true, paddingRight: 4 },
+  
+title: {
+  fontSize: 17,
+  lineHeight: 25,
+  fontWeight: '700',
+  color: C.text,
+  includeFontPadding: true,
+  paddingRight: 10,
+},
+
   subtitle: { fontSize: 12, lineHeight: 20, color: C.muted, marginTop: 5, includeFontPadding: true },
   section: { marginBottom: 24, gap: 10 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 },

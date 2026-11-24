@@ -4,11 +4,11 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import {
-    ActivityIndicator, Alert, KeyboardAvoidingView, Modal,
-    Text as NativeText,
-    Platform,
-    Pressable, ScrollView, StyleSheet, Switch,
-    TextInput, View,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal,
+  Text as NativeText,
+  Platform,
+  Pressable, ScrollView, StyleSheet, Switch,
+  TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
@@ -241,9 +241,17 @@ export default function NovoProdutoScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.heading}>Cadastrar produto</Text>
-          <Pressable onPress={() => router.replace('/produtos')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={17} color="#fff" /><Text style={styles.backButtonText}>Voltar aos produtos</Text>
-          </Pressable>
+          
+            <Pressable
+              onPress={() => router.replace('/produtos')}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={17} color="#fff" />
+              <NativeText style={styles.backButtonText}>
+                Produtos
+              </NativeText>
+            </Pressable>
+
         </View>
 
         <Section>
@@ -361,8 +369,26 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 22, paddingBottom: 40 },
   header: { marginBottom: 20, gap: 14 },
   heading: { fontSize: 30, lineHeight: 42, color: DARK, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
-  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#16a34a', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  backButtonText: { color: '#fff', fontSize: 13, lineHeight: 21, fontWeight: '600' },
+  
+backButton: {
+  width: 170,
+  minHeight: 48,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  backgroundColor: '#16a34a',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+},
+
+backButtonText: {
+  width: 110,
+  color: '#fff',
+  fontSize: 13,
+  fontWeight: '600',
+  includeFontPadding: true,
+},
+
   section: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e8e1d7', borderRadius: 17, padding: 18, marginBottom: 18 },
   sectionTitle: { fontSize: 21, lineHeight: 30, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', color: DARK, marginBottom: 9 },
   sectionDescription: { color: '#8b8176', fontSize: 13, lineHeight: 20, marginBottom: 14 },

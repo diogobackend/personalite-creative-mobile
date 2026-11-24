@@ -66,9 +66,24 @@ const FILTER_FIELDS: Array<[keyof Filters, string, string, 'text' | 'number' | '
   ['createdTo', 'Cadastrado até', 'AAAA-MM-DD', 'date'],
 ];
 
+
 function BRText({ children, style, ...props }: ComponentProps<typeof Text>) {
-  return <Text {...props} textBreakStrategy="simple" style={[{ includeFontPadding: true, paddingRight: 5 }, style]}>{children}</Text>;
+  return (
+    <Text
+      {...props}
+      style={[
+        {
+          includeFontPadding: true,
+          paddingRight: 8,
+        },
+        style,
+      ]}
+    >
+      {children}{'\u00A0\u00A0\u00A0'}
+    </Text>
+  );
 }
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
@@ -407,56 +422,144 @@ export default function ProdutosScreen() {
   </SafeAreaView>;
 }
 
+
 const styles = StyleSheet.create({
   priceFieldsRow: {
-  flexDirection: 'row',
-  gap: 12,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  priceField: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  panel: {
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  borderRadius: 17,
+  backgroundColor: '#fff',
+  marginBottom: 25,
 },
-priceField: {
-  flex: 1,
-  minWidth: 0,
-},
-  flex: { flex: 1 }, safe: { flex: 1, backgroundColor: COLORS.background },
+
+  flex: { flex: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 36, flexGrow: 1 },
+
   header: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 18 },
   menuButton: { width: 43, height: 43, flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, backgroundColor: '#fff' },
-  headerTitle: { flex: 1, minWidth: 0 }, heading: { fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 27, lineHeight: 37, color: COLORS.text },
+  headerTitle: { flex: 1, minWidth: 0 },
+  heading: { fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 27, lineHeight: 37, color: COLORS.text },
   subtitle: { fontSize: 12, color: '#8f8881', lineHeight: 19, marginTop: 4 },
-  addButton: { paddingHorizontal: 12, paddingVertical: 12, backgroundColor: COLORS.gold, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 11 },
-  addText: { color: '#fff', fontSize: 13, lineHeight: 20, fontWeight: '700' }, panel: { padding: 16, borderWidth: 1, borderColor: COLORS.border, borderRadius: 17, backgroundColor: '#fff', marginBottom: 25 },
+
+  addButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 11,
+    minWidth: 100,
+  },
+  addText: {
+    color: '#fff',
+    fontSize: 13,
+    lineHeight: 24,
+    fontWeight: '700',
+  },
+
   inputShell: { minHeight: 48, flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#e8e0d4', paddingHorizontal: 12, gap: 8 },
   textInput: { flex: 1, fontSize: 14, color: COLORS.text, paddingVertical: 10, minWidth: 0 },
-  searchRow: { flexDirection: 'row', gap: 9, marginTop: 10 }, codeInput: { flex: 1, minHeight: 45, borderWidth: 1, borderColor: '#e8e0d4', borderRadius: 11, paddingHorizontal: 12 },
+  searchRow: { flexDirection: 'row', gap: 9, marginTop: 10 },
+  codeInput: { flex: 1, minHeight: 45, borderWidth: 1, borderColor: '#e8e0d4', borderRadius: 11, paddingHorizontal: 12 },
   searchButton: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: COLORS.dark, paddingHorizontal: 16, borderRadius: 11, minHeight: 45 },
-  searchButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 }, toolbar: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 12 },
+  searchButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 12 },
   outlineButton: { paddingHorizontal: 13, paddingVertical: 11, borderWidth: 1, borderColor: '#e8e0d4', borderRadius: 11, flexDirection: 'row', gap: 7, alignItems: 'center' },
-  outlineText: { color: COLORS.dark, fontWeight: '600', fontSize: 12 }, iconButton: { marginLeft: 'auto', padding: 11, borderWidth: 1, borderColor: '#e8e0d4', borderRadius: 11 },
-  resultsHeader: { gap: 3, marginBottom: 15 }, sectionTitle: { fontWeight: '700', fontSize: 16, color: COLORS.text },
+  outlineText: { color: COLORS.dark, fontWeight: '600', fontSize: 12 },
+  iconButton: { marginLeft: 'auto', padding: 11, borderWidth: 1, borderColor: '#e8e0d4', borderRadius: 11 },
+
+  resultsHeader: { gap: 3, marginBottom: 15 },
+  sectionTitle: { fontWeight: '700', fontSize: 16, color: COLORS.text },
   smallMuted: { color: '#8f8881', fontSize: 11, lineHeight: 16 },
+
   productCard: { borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: 'white', padding: 17, marginBottom: 12 },
-  productTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, productInfo: { flex: 1, gap: 5 },
-  productCode: { fontWeight: '700', fontSize: 13, letterSpacing: 0.6 }, productName: { fontSize: 16, fontWeight: '700', color: COLORS.text, lineHeight: 23 },
-  productCategory: { color: COLORS.muted, fontSize: 12 }, status: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#edf7f0', alignSelf: 'flex-start' },
-  statusText: { fontSize: 11, lineHeight: 17, color: '#287349', fontWeight: '700' }, statusInactive: { backgroundColor: '#f1efed' }, statusInactiveText: { color: '#827a72' },
+  productTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  productInfo: { flex: 1, gap: 5 },
+  productCode: { fontWeight: '700', fontSize: 13, letterSpacing: 0.6 },
+  productName: { fontSize: 16, fontWeight: '700', color: COLORS.text, lineHeight: 23 },
+  productCategory: { color: COLORS.muted, fontSize: 12 },
+
+  status: {
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    backgroundColor: '#edf7f0',
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 11,
+    lineHeight: 22,
+    color: '#287349',
+    fontWeight: '700',
+  },
+  statusInactive: { backgroundColor: '#f1efed' },
+  statusInactiveText: { color: '#827a72' },
+
   productBottom: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f0ece5', marginTop: 13, paddingTop: 14, gap: 12 },
-  valueBox: { flex: 1, gap: 5 }, value: { fontWeight: '700', color: COLORS.text, fontSize: 15 },
-  productActions: { flexDirection: 'row', gap: 16, justifyContent: 'flex-end', marginTop: 13 },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 3 }, actionText: { fontSize: 12, lineHeight: 19, color: COLORS.gold, fontWeight: '700' },
-  message: { alignItems: 'center', gap: 10, padding: 25, backgroundColor: '#fff', borderRadius: 14, marginBottom: 12 }, error: { color: '#b91c1c', fontSize: 13, textAlign: 'center' },
-  pagination: { paddingTop: 14, alignItems: 'center', gap: 13 }, paginationButtons: { flexDirection: 'row', gap: 12 },
+  valueBox: { flex: 1, gap: 5 },
+  value: { fontWeight: '700', color: COLORS.text, fontSize: 15 },
+
+  productActions: {
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'flex-end',
+    marginTop: 13,
+    flexWrap: 'wrap',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  actionText: {
+    fontSize: 12,
+    lineHeight: 24,
+    color: COLORS.gold,
+    fontWeight: '700',
+  },
+
+  message: { alignItems: 'center', gap: 10, padding: 25, backgroundColor: '#fff', borderRadius: 14, marginBottom: 12 },
+  error: { color: '#b91c1c', fontSize: 13, textAlign: 'center' },
+  pagination: { paddingTop: 14, alignItems: 'center', gap: 13 },
+  paginationButtons: { flexDirection: 'row', gap: 12 },
   pageButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, gap: 4 },
-  disabled: { opacity: 0.35 }, modalBackdrop: { flex: 1, backgroundColor: '#0008', justifyContent: 'flex-end' },
+
+  disabled: { opacity: 0.35 },
+  modalBackdrop: { flex: 1, backgroundColor: '#0008', justifyContent: 'flex-end' },
   modalSheet: { height: '88%', backgroundColor: COLORS.background, borderTopLeftRadius: 23, borderTopRightRadius: 23, overflow: 'hidden' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 17, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  modalContent: { padding: 20, paddingBottom: 40 }, modalFooter: { paddingHorizontal: 20, paddingVertical: 15, flexDirection: 'row', gap: 11, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: COLORS.border },
+  modalContent: { padding: 20, paddingBottom: 40 },
+  modalFooter: { paddingHorizontal: 20, paddingVertical: 15, flexDirection: 'row', gap: 11, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: COLORS.border },
   clearButton: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, minHeight: 46 },
   applyButton: { flex: 1, backgroundColor: COLORS.gold, borderRadius: 11, alignItems: 'center', justifyContent: 'center', minHeight: 46 },
-  filterBlock: { marginBottom: 19 }, label: { fontSize: 13, color: COLORS.text, fontWeight: '600', marginBottom: 9 },
+  filterBlock: { marginBottom: 19 },
+  label: { fontSize: 13, color: COLORS.text, fontWeight: '600', marginBottom: 9 },
   filterInput: { borderWidth: 1, borderColor: '#e8e0d4', backgroundColor: '#fff', borderRadius: 11, minHeight: 47, paddingHorizontal: 13, fontSize: 14, color: COLORS.text },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border },
-  chipActive: { backgroundColor: '#f4ead8', borderColor: COLORS.gold }, chipText: { fontSize: 12, color: COLORS.muted }, chipTextActive: { color: '#8c693b', fontWeight: '700' },
-  centerBackdrop: { flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 23 }, sortPanel: { backgroundColor: '#fff', borderRadius: 18, padding: 20, gap: 8, maxHeight: '90%' },
-  sortItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }, divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 4 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  chip: { borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border },
+  chipActive: { backgroundColor: '#f4ead8', borderColor: COLORS.gold },
+  chipText: { fontSize: 12, color: COLORS.muted },
+  chipTextActive: { color: '#8c693b', fontWeight: '700' },
+
+  centerBackdrop: { flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 23 },
+  sortPanel: { backgroundColor: '#fff', borderRadius: 18, padding: 20, gap: 8, maxHeight: '90%' },
+  sortItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 4 },
+
   drawerOverlay: { flex: 1, flexDirection: 'row' },
   drawerBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   drawer: { width: '82%', maxWidth: 310, height: '100%', backgroundColor: COLORS.dark },
@@ -474,10 +577,10 @@ priceField: {
   drawerItemText: { fontSize: 14, lineHeight: 22, color: '#d8d0c6', flex: 1 },
   drawerItemTextActive: { color: '#fff', fontWeight: '700' },
   drawerFooter: { borderTopWidth: 1, borderTopColor: '#ffffff1b', paddingHorizontal: 16, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  drawerAvatar: { width: 39, height: 39, backgroundColor: '#b99b6629', borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  drawerAvatar: { width: 39, height: 39, backgroundColor: '#b99b6629', borderRadius: 20 },
   drawerAvatarText: { color: '#e3c99a', fontWeight: '700', fontSize: 13 },
   drawerAccount: { flex: 1 },
   drawerAccountTitle: { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 20 },
   drawerAccountSubtitle: { color: '#bcb0a0', fontSize: 11, lineHeight: 17 },
-
 });
+

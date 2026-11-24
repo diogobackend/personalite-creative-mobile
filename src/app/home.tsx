@@ -419,9 +419,22 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.controls}>
-          <Pressable style={styles.controlButton} onPress={() => void loadReports()} disabled={loading}>
-            <Ionicons name="refresh-outline" size={18} color={COLORS.gold} /><Text style={styles.controlText}>Atualizar</Text>
-          </Pressable>
+          <Pressable
+  style={styles.controlButton}
+  onPress={() => void loadReports()}
+  disabled={loading}
+>
+  <Ionicons name="refresh-outline" size={18} color={COLORS.gold} />
+  <View style={{ width: 85 }}>
+    <Text
+      style={styles.controlText}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+    >
+      Atualizar
+    </Text>
+  </View>
+</Pressable>
         </View>
         <View style={styles.card}>
           <Text style={styles.detailTitle}>Exportar relatórios</Text>
@@ -633,8 +646,27 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   controls: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 14 },
-  controlButton: { flexDirection: 'row', gap: 7, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
-  controlText: { color: COLORS.gold, fontWeight: '700', fontSize: 13 },
+  controlButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 7,
+  minWidth: 130,
+  minHeight: 46,
+  paddingHorizontal: 16,
+  borderRadius: 12,
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: COLORS.border,
+},
+
+controlText: {
+  color: COLORS.gold,
+  fontWeight: '700',
+  fontSize: 13,
+  lineHeight: 24,
+  includeFontPadding: true,
+  paddingRight: 12,
+},
   selectButton: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, marginTop: 10, paddingHorizontal: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   selectText: { fontSize: 13, lineHeight: 20, color: COLORS.dark, flexShrink: 1 },
   exportButton: { backgroundColor: COLORS.gold, borderRadius: 11, minHeight: 47, marginTop: 12, flexDirection: 'row', gap: 9, justifyContent: 'center', alignItems: 'center' },
@@ -672,7 +704,15 @@ const styles = StyleSheet.create({
   drawerSystem: { marginTop: 32 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 47, paddingHorizontal: 15, marginBottom: 3, borderRadius: 11 },
   drawerItemActive: { backgroundColor: '#b99b66' },
-  drawerItemText: { fontSize: 14, lineHeight: 22, color: '#d8d0c6', flexShrink: 1 },
+drawerItemText: {
+  flex: 1,
+  fontSize: 14,
+  lineHeight: 24,
+  color: '#d8d0c6',
+  includeFontPadding: true,
+  paddingRight: 16,
+  flexWrap: 'wrap',
+},
   drawerItemTextActive: { color: '#fff', fontWeight: '700' },
   drawerFooter: { borderTopWidth: 1, borderTopColor: '#ffffff1b', paddingHorizontal: 17, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', gap: 11 },
   drawerAvatar: { width: 39, height: 39, backgroundColor: '#b99b6629', borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

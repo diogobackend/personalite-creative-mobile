@@ -4,8 +4,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-    ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
-    Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
+  Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
@@ -288,7 +288,7 @@ export default function EditarProdutoScreen() {
           </Section>
           <Section title="Características">
             {attributeFields.map(({ key, label, placeholder }) => <View key={key} style={s.attributeGroup}>
-              <Field label={label}><View style={s.addRow}><TextInput style={[s.input, s.attributeInput]} placeholder={placeholder} placeholderTextColor="#aaa19a" value={inputs[key]} onChangeText={value => setInputs(current => ({ ...current, [key]: value }))} onSubmitEditing={() => addAttribute(key)} /><Pressable style={s.addButton} onPress={() => addAttribute(key)}><Ionicons name="add" color={C.gold} size={19}/><Text style={s.outlineText}>Add</Text></Pressable></View></Field>
+              <Field label={label}><View style={s.addRow}><TextInput style={[s.input, s.attributeInput]} placeholder={placeholder} placeholderTextColor="#aaa19a" value={inputs[key]} onChangeText={value => setInputs(current => ({ ...current, [key]: value }))} onSubmitEditing={() => addAttribute(key)} /><Pressable style={s.addButton} onPress={() => addAttribute(key)}><Ionicons name="add" color={C.gold} size={19}/><Text style={s.attributeButtonText}>Adicionar{'\u00A0\u00A0'}</Text></Pressable></View></Field>
               {!!attributes[key].length && <View style={s.tags}>{attributes[key].map((value, index) => <View style={s.tag} key={`${key}-${index}`}><Text style={s.tagText}>{value}</Text><Pressable onPress={() => setAttributes(current => ({ ...current, [key]: current[key].filter((_, i) => i !== index) }))}><Ionicons name="close-circle-outline" color={C.red} size={20}/></Pressable></View>)}</View>}
             </View>)}
           </Section>
@@ -305,8 +305,8 @@ export default function EditarProdutoScreen() {
             </View>)}
           </Section>
           <View style={s.actions}>
-            <Pressable style={s.cancelButton} disabled={saving} onPress={back}><Text style={s.cancelText}>Cancelar</Text></Pressable>
-            <Pressable style={[s.saveButton, saving && s.disabled]} disabled={saving} onPress={() => void save()}>{saving ? <ActivityIndicator color="#fff"/> : <Ionicons name="save-outline" color="#fff" size={19}/>}<Text style={s.saveText}>{saving ? 'Salvando...' : 'Salvar alterações'}</Text></Pressable>
+            <Pressable style={s.cancelButton} disabled={saving} onPress={back}><Text style={s.cancelText}>Cancelar{'\u00A0\u00A0'}</Text></Pressable>
+            <Pressable style={[s.saveButton, saving && s.disabled]} disabled={saving} onPress={() => void save()}>{saving ? <ActivityIndicator color="#fff"/> : <Ionicons name="save-outline" color="#fff" size={19}/>}<Text style={s.saveText}>{saving ? 'Salvando...' : 'Salvar alterações'}{'\u00A0\u00A0'}</Text></Pressable>
           </View>
         </>}
       </ScrollView>
@@ -351,15 +351,68 @@ const s = StyleSheet.create({
   attributeGroup: { marginBottom: 7 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   attributeInput: { flex: 1, width: undefined, minWidth: 0 },
-  addButton: { flexDirection: 'row', alignItems: 'center', minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: '#e2d7c9', gap: 4, paddingHorizontal: 12 },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 145,
+    minHeight: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2d7c9',
+    gap: 4,
+    paddingHorizontal: 10,
+  },
+  attributeButtonText: {
+    color: '#946f3d',
+    fontSize: 12,
+    lineHeight: 24,
+    fontWeight: '700',
+    includeFontPadding: true,
+  },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   tag: { backgroundColor: '#faf8f5', borderColor: C.border, borderWidth: 1, borderRadius: 9, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, maxWidth: '100%' },
   tagText: { color: C.dark, fontSize: 13, lineHeight: 21 },
   actions: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
-  cancelButton: { flex: 1, borderWidth: 1, borderColor: C.border, backgroundColor: C.paper, minHeight: 53, borderRadius: 11, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 9 },
-  cancelText: { color: C.dark, fontSize: 13, lineHeight: 21, fontWeight: '600' },
-  saveButton: { flex: 1.6, backgroundColor: C.gold, minHeight: 53, borderRadius: 11, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 11 },
-  saveText: { color: '#fff', fontSize: 13, lineHeight: 21, fontWeight: '700', textAlign: 'center' },
+  cancelButton: {
+    minWidth: 125,
+    minHeight: 53,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.paper,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  cancelText: {
+    color: C.dark,
+    fontSize: 12,
+    lineHeight: 24,
+    fontWeight: '600',
+    includeFontPadding: true,
+  },
+  saveButton: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: C.gold,
+    minHeight: 53,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 8,
+  },
+  saveText: {
+    color: '#fff',
+    fontSize: 12,
+    lineHeight: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    flexShrink: 1,
+    includeFontPadding: true,
+  },
   disabled: { opacity: 0.6 }, error: { color: '#b91c1c', fontSize: 14, lineHeight: 22 },
   overlay: { flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 22 },
   pickerCard: { backgroundColor: '#fff', borderRadius: 18, padding: 19, maxHeight: '75%' },
