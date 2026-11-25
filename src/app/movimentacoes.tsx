@@ -6,10 +6,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
   Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  type StyleProp, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
-
 type IconName = keyof typeof Ionicons.glyphMap;
 type Direction = 'IN' | 'OUT' | null;
 type Origin = 'SALE' | 'EXPENSE';
@@ -52,7 +52,6 @@ type Filters = {
 };
 type Option = { value: string; label: string };
 type Picker = { title: string; value: string; options: Option[]; select: (value: string) => void } | null;
-
 const COLORS = {
   bg: '#f8f6f2', paper: '#ffffff', ink: '#342d27', muted: '#766d63',
   gold: '#a98a58', border: '#e8e0d4', menu: '#39342f',
@@ -96,6 +95,22 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Despesas', icon: 'wallet-outline', route: '/despesas' },
   { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const maskDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+const toIsoDate = (value: string): string | null => {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return null;
+  const [day, month, year] = value.split('/').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+const toBrazilian = (date: Date) => `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 const money = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 const dateTime = (raw: string) => {
   const d = new Date(raw);
@@ -103,8 +118,9 @@ const dateTime = (raw: string) => {
 };
 // A API utiliza instantes ISO. O fim de período inclui o dia inteiro no fuso do aparelho.
 const apiDate = (value: string, end: boolean) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const d = new Date(`${value}T${end ? '23:59:59.999' : '00:00:00.000'}`);
+  const iso = toIsoDate(value);
+  if (!iso) return value;
+  const d = new Date(`${iso}T${end ? '23:59:59.999' : '00:00:00.000'}`);
   return Number.isNaN(d.getTime()) ? value : d.toISOString();
 };
 const errorMessage = (e: unknown) => {
@@ -116,7 +132,6 @@ const errorMessage = (e: unknown) => {
   }
   return e instanceof Error ? e.message : 'Não foi possível carregar as movimentações.';
 };
-
 // Textos podem ocupar mais de uma linha. Não usar numberOfLines,
 // ellipsizeMode, adjustsFontSizeToFit ou largura fixa para rótulos.
 function Field({ label, value, onChange, placeholder, numeric = false, maxLength }: {
@@ -130,13 +145,28 @@ function Field({ label, value, onChange, placeholder, numeric = false, maxLength
       autoCapitalize="none" keyboardType={numeric ? 'decimal-pad' : 'default'} />
   </View>;
 }
-function Button({ label, icon, onPress, secondary = false, disabled = false }: {
-  label: string; icon?: IconName; onPress: () => void; secondary?: boolean; disabled?: boolean;
+function DateField({ label, value, onChange, onCalendar }: {
+  label: string; value: string; onChange: (value: string) => void; onCalendar: () => void;
+}) {
+  return <View style={s.field}>
+    <Text style={s.fieldLabel}>{label}</Text>
+    <View style={s.dateRow}>
+      <TextInput style={[s.input, s.dateInput]} value={value} onChangeText={v => onChange(maskDate(v))}
+        placeholder="DD/MM/AAAA" placeholderTextColor="#9f978d" maxLength={10} keyboardType="number-pad" />
+      <Pressable onPress={onCalendar} style={s.calendarButton} accessibilityLabel={`Selecionar ${label} no calendário`}>
+        <Ionicons name="calendar-outline" size={23} color={COLORS.gold} />
+      </Pressable>
+    </View>
+  </View>;
+}
+function Button({ label, icon, onPress, secondary = false, disabled = false, style }: {
+  label: string; icon?: IconName; onPress: () => void; secondary?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>;
 }) {
   return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled}
-    style={[s.button, secondary ? s.buttonSecondary : s.buttonPrimary, disabled && s.disabled]}>
+    style={[s.button, secondary ? s.buttonSecondary : s.buttonPrimary, style, disabled && s.disabled]}>
     {icon && <Ionicons name={icon} size={18} color={secondary ? COLORS.gold : '#fff'} />}
-    <Text style={[s.buttonText, secondary ? s.buttonTextSecondary : s.buttonTextPrimary]}>{label}</Text>
+    <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip"
+      style={[s.buttonText, { width: Math.max(68, Math.ceil(label.length * 8.2) + 14) }, secondary ? s.buttonTextSecondary : s.buttonTextPrimary]}>{label}</Text>
   </Pressable>;
 }
 function Metric({ label, value, icon }: { label: string; value: string; icon: IconName }) {
@@ -148,7 +178,6 @@ function Metric({ label, value, icon }: { label: string; value: string; icon: Ic
     <Text style={s.metricValue}>{value}</Text>
   </View>;
 }
-
 export default function MovimentacoesScreen() {
   const [draft, setDraft] = useState<Filters>({ ...EMPTY });
   const [applied, setApplied] = useState<Filters>({ ...EMPTY });
@@ -165,12 +194,26 @@ export default function MovimentacoesScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [picker, setPicker] = useState<Picker>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
+  const [calendarField, setCalendarField] = useState<'createdFrom' | 'createdTo' | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const openCalendar = (field: 'createdFrom' | 'createdTo') => {
+    const iso = toIsoDate(draft[field]);
+    const selected = iso ? new Date(`${iso}T12:00:00`) : new Date();
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setCalendarField(field);
+  };
+  const shiftMonth = (offset: number) => setCalendarMonth(previous => new Date(previous.getFullYear(), previous.getMonth() + offset, 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const offset = new Date(year, month, 1).getDay();
+    return [...Array.from({ length: offset }, () => null),
+      ...Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => index + 1)];
+  }, [calendarMonth]);
   const update = (key: keyof Filters, value: string) => setDraft(current => ({ ...current, [key]: value }));
   const choose = (title: string, value: string, options: Option[], select: (v: string) => void) =>
     setPicker({ title, value, options, select });
   const activeCount = useMemo(() => Object.values(applied).filter(Boolean).length, [applied]);
-
   const fetchMovements = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError(null);
@@ -192,7 +235,6 @@ export default function MovimentacoesScreen() {
       if (signal.aborted) return;
       setResult(data);
       setDetails({});
-
       // Consultas opcionais não devem prejudicar o histórico principal.
       // Usa cliente/produto/despesa apenas uma vez para cada origem distinta.
       const extraApi = axios.create({ baseURL: api.defaults.baseURL, headers });
@@ -231,13 +273,11 @@ export default function MovimentacoesScreen() {
       if (!signal.aborted) { setLoading(false); setRefreshing(false); }
     }
   }, [applied, page, size, sortBy, sortDirection]);
-
   useEffect(() => {
     const controller = new AbortController();
     void fetchMovements(controller.signal);
     return () => controller.abort();
   }, [fetchMovements, reloadKey]);
-
   const movements = result?.content ?? [];
   const pageSummary = useMemo(() => {
     const entries = movements.filter(item => item.direction === 'IN').reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -248,9 +288,11 @@ export default function MovimentacoesScreen() {
   const currentPage = result?.page ?? page;
   const first = totalElements ? currentPage * size + 1 : 0;
   const last = totalElements ? Math.min(first + movements.length - 1, totalElements) : 0;
-
   function apply() {
-    if (draft.createdFrom && draft.createdTo && draft.createdFrom > draft.createdTo) {
+    if ((draft.createdFrom && !toIsoDate(draft.createdFrom)) || (draft.createdTo && !toIsoDate(draft.createdTo))) {
+      Alert.alert('Datas inválidas', 'Informe datas válidas no formato DD/MM/AAAA.'); return;
+    }
+    if (draft.createdFrom && draft.createdTo && toIsoDate(draft.createdFrom)! > toIsoDate(draft.createdTo)!) {
       Alert.alert('Datas inválidas', 'A data inicial não pode ser posterior à data final.'); return;
     }
     if (draft.minAmount && draft.maxAmount && Number(draft.minAmount.replace(',', '.')) > Number(draft.maxAmount.replace(',', '.'))) {
@@ -281,34 +323,29 @@ export default function MovimentacoesScreen() {
         <Ionicons name="chevron-down-outline" size={19} color={COLORS.gold} />
       </Pressable>
     </View>;
-
   return <SafeAreaView edges={['top', 'bottom']} style={s.safe}>
     <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.topbar}>
         <Pressable onPress={() => setMenuOpen(true)} style={s.topbarButton} accessibilityLabel="Abrir menu">
           <Ionicons name="menu-outline" size={27} color={COLORS.ink} />
         </Pressable>
-        <Text style={s.topbarTitle}>Movimentações</Text>
+        <Text style={s.topbarTitle}>Movimentações Financeiras</Text>
         <Pressable onPress={() => setReloadKey(n => n + 1)} style={s.topbarButton} accessibilityLabel="Atualizar movimentações">
           <Ionicons name="refresh-outline" size={21} color={COLORS.gold} />
         </Pressable>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setReloadKey(n => n + 1); }} colors={[COLORS.gold]} tintColor={COLORS.gold} />}>
-        <Text style={s.heading}>Movimentações financeiras</Text>
-        <Text style={s.helper}>Valores referentes somente à página carregada.</Text>
         <View style={s.metrics}>
           <Metric label="Entradas" value={money(pageSummary.entries)} icon="arrow-down-circle-outline" />
           <Metric label="Saídas" value={money(pageSummary.exits)} icon="arrow-up-circle-outline" />
           <Metric label="Saldo" value={money(pageSummary.balance)} icon="wallet-outline" />
           <Metric label="Movimentações" value={String(totalElements)} icon="swap-horizontal-outline" />
         </View>
-
         <View style={s.panel}>
-          <View style={s.titleRow}><Ionicons name="calendar-outline" size={21} color={COLORS.gold} /><Text style={s.sectionTitle}>Filtrar</Text></View>
-          <Field label="Data da movimentação — De (AAAA-MM-DD)" value={draft.createdFrom} onChange={v => update('createdFrom', v)} placeholder="2026-11-01" />
-          <Field label="Data da movimentação — Até (AAAA-MM-DD)" value={draft.createdTo} onChange={v => update('createdTo', v)} placeholder="2026-11-30" />
-          <Field label="ID da venda / despesa" value={draft.originId} onChange={v => update('originId', v)} maxLength={36} />
+          <View style={s.titleRow}><Ionicons name="calendar-outline" size={21} color={COLORS.gold} /><Text allowFontScaling={false} numberOfLines={1} style={[s.sectionTitle, { width: 230, flexShrink: 0, fontSize: 17 }]}>Intervalo de datas</Text></View>
+          <DateField label="Data — A partir de" value={draft.createdFrom} onChange={v => update('createdFrom', v)} onCalendar={() => openCalendar('createdFrom')} />
+          <DateField label="Data — Até" value={draft.createdTo} onChange={v => update('createdTo', v)} onCalendar={() => openCalendar('createdTo')} />
           <View style={s.twoCol}>
             <View style={s.column}><Field label="Valor — A partir de" value={draft.minAmount} onChange={v => update('minAmount', v)} placeholder="0,00" numeric /></View>
             <View style={s.column}><Field label="Valor — Até" value={draft.maxAmount} onChange={v => update('maxAmount', v)} placeholder="Sem limite" numeric /></View>
@@ -318,7 +355,8 @@ export default function MovimentacoesScreen() {
             const selected = applied[item.field] === item.value;
             return <Pressable key={`${item.field}-${item.value}`} onPress={() => quick(item.field, item.value)}
               style={[s.chip, selected && s.chipActive]}>
-              <Text style={[s.chipText, selected && s.chipTextActive]}>{item.label}</Text>
+              <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip"
+                style={[s.chipText, { width: Math.ceil(item.label.length * 8) + 10 }, selected && s.chipTextActive]}>{item.label}</Text>
             </Pressable>;
           })}</View>
           <Button secondary label={advanced ? 'Ocultar filtros avançados' : 'Filtros avançados'} icon="options-outline" onPress={() => setAdvanced(v => !v)} />
@@ -338,12 +376,11 @@ export default function MovimentacoesScreen() {
             ], v => update('status', v))}
             <Field label="Descrição" value={draft.description} onChange={v => update('description', v)} placeholder="Buscar na descrição" />
           </View>}
-          <View style={s.actions}>
-            <Button secondary label={`Limpar${activeCount ? ` (${activeCount})` : ''}`} icon="close-outline" onPress={clear} />
-            <Button label="Buscar movimentações" icon="search-outline" onPress={apply} />
+          <View style={s.filterActions}>
+            <Button style={s.filterClearButton} secondary label={`Limpar${activeCount ? ` (${activeCount})` : ''}`} icon="close-outline" onPress={clear} />
+            <Button style={s.filterSearchButton} label="Buscar" icon="search-outline" onPress={apply} />
           </View>
         </View>
-
         <View style={s.panel}>
           <Text style={s.sectionTitle}>Histórico</Text>
           <Text style={s.helper}>{loading ? 'Carregando movimentações...' : `${totalElements} ${totalElements === 1 ? 'movimentação encontrada' : 'movimentações encontradas'}`}{activeCount ? ` · ${activeCount} filtros aplicados` : ''}</Text>
@@ -376,7 +413,8 @@ export default function MovimentacoesScreen() {
                   </View>
                   <View style={[s.directionPill, entry ? s.inPill : exit ? s.outPill : s.neutralPill]}>
                     <Ionicons name={entry ? 'arrow-down-outline' : exit ? 'arrow-up-outline' : 'swap-horizontal-outline'} size={15} color={entry ? '#047857' : exit ? '#b91c1c' : COLORS.muted} />
-                    <Text style={[s.directionText, { color: entry ? '#047857' : exit ? '#b91c1c' : COLORS.muted }]}>{entry ? 'Entrada' : exit ? 'Saída' : 'Venda'}</Text>
+                    <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip"
+                    style={[s.directionText, { width: entry ? 74 : exit ? 58 : isSale ? 59 : 75, color: entry ? '#047857' : exit ? '#b91c1c' : COLORS.muted }]}>{entry ? 'Entrada' : exit ? 'Saída' : isSale ? 'Venda' : 'Despesa'}</Text>
                   </View>
                 </View>
                 <Text style={[s.movementAmount, entry && s.entryValue, exit && s.exitValue]}>
@@ -393,7 +431,7 @@ export default function MovimentacoesScreen() {
                 <View style={s.detailBlock}><Text style={s.detailLabel}>Operação</Text><Text style={s.detailValue}>{operation}</Text></View>
                 <View style={s.detailBlock}><Text style={s.detailLabel}>Data</Text><Text style={s.detailValue}>{dateTime(item.createdAt)}</Text></View>
                 <View style={s.movementActions}>
-                  <Button secondary label={isSale ? 'Visualizar venda' : 'Visualizar despesa'} icon="eye-outline"
+                  <Button secondary label="Visualizar" icon="eye-outline"
                     onPress={() => router.push(originRoute as never)} />
                 </View>
               </View>;
@@ -401,16 +439,50 @@ export default function MovimentacoesScreen() {
           {!loading && !error && result && <View style={s.pagination}>
             <Text style={s.helper}>Exibindo {first} a {last} de {totalElements} resultados</Text>
             <Text style={s.pageText}>Página {result.totalPages ? currentPage + 1 : 0} de {result.totalPages}</Text>
-            <View style={s.actions}>
-              <Button secondary label="Anterior" icon="chevron-back-outline" disabled={loading || result.first} onPress={() => setPage(p => Math.max(0, p - 1))} />
-              <Button secondary label="Próxima" icon="chevron-forward-outline" disabled={loading || result.last} onPress={() => setPage(p => p + 1)} />
+            <View style={s.paginationActions}>
+              <Button style={s.paginationButton} secondary label="Anterior" icon="chevron-back-outline" disabled={loading || result.first} onPress={() => setPage(p => Math.max(0, p - 1))} />
+              <Button style={s.paginationButton} secondary label="Próximo" icon="chevron-forward-outline" disabled={loading || result.last} onPress={() => setPage(p => p + 1)} />
             </View>
           </View>}
         </View>
         <Text style={s.footer}>Personalité Creative · Sistema de gestão</Text>
       </ScrollView>
     </KeyboardAvoidingView>
-
+    <Modal visible={calendarField !== null} transparent animationType="fade" onRequestClose={() => setCalendarField(null)}>
+      <View style={s.calendarBackdrop}>
+        <View style={s.calendarPanel}>
+          <View style={s.calendarHeader}>
+            <Pressable onPress={() => shiftMonth(-1)} accessibilityLabel="Mês anterior" style={s.calendarNav}>
+              <Ionicons name="chevron-back" size={23} color={COLORS.gold} />
+            </Pressable>
+            <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip" style={s.calendarHeading}>{MONTH_NAMES[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}</Text>
+            <Pressable onPress={() => shiftMonth(1)} accessibilityLabel="Próximo mês" style={s.calendarNav}>
+              <Ionicons name="chevron-forward" size={23} color={COLORS.gold} />
+            </Pressable>
+          </View>
+          <View style={s.calendarGrid}>
+            {WEEKDAYS.map((weekday, index) => <View key={`weekday-${index}`} style={s.calendarCell}>
+              <Text style={s.calendarWeekday}>{weekday}</Text>
+            </View>)}
+            {calendarDays.map((day, index) => {
+              const candidate = day ? new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day) : null;
+              const selected = candidate && calendarField ? toBrazilian(candidate) === draft[calendarField] : false;
+              return <View key={`day-${index}`} style={s.calendarCell}>
+                {candidate && <Pressable style={[s.calendarDay, selected && s.calendarDaySelected]}
+                  onPress={() => { if (calendarField) update(calendarField, toBrazilian(candidate)); setCalendarField(null); }}
+                  accessibilityLabel={`Selecionar ${toBrazilian(candidate)}`}>
+                  <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip"
+                      style={[s.calendarDayText, selected && s.calendarDayTextSelected]}>{String(day)}</Text>
+                </Pressable>}
+              </View>;
+            })}
+          </View>
+          <Pressable style={s.calendarClose} onPress={() => setCalendarField(null)}>
+            <Text allowFontScaling={false} numberOfLines={1} ellipsizeMode="clip" style={s.calendarCloseText}>Fechar</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
     <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
       <View style={s.modalOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} accessibilityLabel="Fechar seleção" />
@@ -428,7 +500,6 @@ export default function MovimentacoesScreen() {
         </View>
       </View>
     </Modal>
-
     <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)} statusBarTranslucent>
       <View style={s.drawerOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="Fechar menu" />
@@ -461,7 +532,6 @@ export default function MovimentacoesScreen() {
     </Modal>
   </SafeAreaView>;
 }
-
 const s = StyleSheet.create({
   flex: { flex: 1 }, safe: { flex: 1, backgroundColor: COLORS.bg },
   topbar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border, minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
@@ -476,25 +546,30 @@ const s = StyleSheet.create({
   metricLabel: { flex: 1, color: COLORS.muted, fontSize: 14, lineHeight: 23, includeFontPadding: true },
   metricValue: { fontSize: 23, lineHeight: 35, color: COLORS.ink, fontWeight: '700', includeFontPadding: true, marginTop: 9 },
   panel: { backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 16, marginBottom: 18 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 15 },
-  sectionTitle: { color: COLORS.ink, fontSize: 18, lineHeight: 29, fontWeight: '700', includeFontPadding: true, marginBottom: 9 },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 9, marginBottom: 15 },
+  sectionTitle: { color: COLORS.ink, fontSize: 18, lineHeight: 29, fontWeight: '700', includeFontPadding: true, marginBottom: 9, flexShrink: 1 },
   field: { marginBottom: 14, minWidth: 0 },
   fieldLabel: { fontSize: 13, lineHeight: 23, color: COLORS.ink, fontWeight: '600', marginBottom: 7, includeFontPadding: true },
   input: { minHeight: 49, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, paddingHorizontal: 13, paddingVertical: 10, color: COLORS.ink, fontSize: 14, includeFontPadding: true },
   twoCol: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' }, column: { flex: 1, minWidth: 0 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: { paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11 },
+  chip: { paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, alignSelf: 'flex-start', flexShrink: 0 },
   chipActive: { backgroundColor: '#f2e9da', borderColor: COLORS.gold },
-  chipText: { color: COLORS.muted, fontSize: 12, lineHeight: 22, fontWeight: '600', includeFontPadding: true },
+  chipText: { color: COLORS.muted, fontSize: 12, lineHeight: 22, fontWeight: '600', includeFontPadding: false, textAlign: 'center', flexShrink: 0 },
   chipTextActive: { color: '#725934' },
   advanced: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 17, paddingTop: 16, marginBottom: 9 },
   select: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 49, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, paddingHorizontal: 13, paddingVertical: 10 },
   selectValue: { flex: 1, fontSize: 13, lineHeight: 22, color: COLORS.ink, includeFontPadding: true },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 14, justifyContent: 'flex-end' },
-  button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 15, paddingVertical: 11, minHeight: 45, borderRadius: 11 },
+  filterActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  filterClearButton: { flex: 1, minWidth: 0, height: 48, alignSelf: 'auto' },
+  filterSearchButton: { flex: 1, minWidth: 0, height: 48, alignSelf: 'auto' },
+  paginationActions: { flexDirection: 'row', gap: 9, marginTop: 14 },
+  paginationButton: { flex: 1, minWidth: 0, minHeight: 47, paddingHorizontal: 7, alignSelf: 'auto' },
+  button: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 9, minHeight: 45, borderRadius: 11, alignSelf: 'flex-start' },
   buttonPrimary: { backgroundColor: COLORS.ink },
   buttonSecondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border },
-  buttonText: { fontSize: 13, lineHeight: 23, fontWeight: '700', includeFontPadding: true },
+  buttonText: { fontSize: 13, lineHeight: 22, fontWeight: '700', includeFontPadding: false, textAlign: 'center', flexShrink: 0 },
   buttonTextPrimary: { color: '#fff' }, buttonTextSecondary: { color: '#80623d' }, disabled: { opacity: 0.4 },
   refreshRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 },
   feedback: { paddingVertical: 28, gap: 12, alignItems: 'center' },
@@ -502,13 +577,13 @@ const s = StyleSheet.create({
   empty: { color: COLORS.muted, fontSize: 13, lineHeight: 23, paddingVertical: 24, textAlign: 'center' },
   movement: { backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 13, padding: 15, marginBottom: 12, gap: 7 },
   movementAlternate: { backgroundColor: '#f0ece6' },
-  movementTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 9 },
-  movementTopText: { gap: 3, minWidth: 0, flexGrow: 1 },
+  movementTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  movementTopText: { flex: 1, gap: 3, minWidth: 0 },
   movementCode: { color: COLORS.ink, fontSize: 15, lineHeight: 25, fontWeight: '700', includeFontPadding: true },
   movementKind: { color: COLORS.muted, fontSize: 12, lineHeight: 21, includeFontPadding: true },
-  directionPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderRadius: 10, gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+  directionPill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', flexShrink: 0, borderRadius: 10, gap: 4, paddingHorizontal: 9, paddingVertical: 7 },
   inPill: { backgroundColor: '#d1fae5' }, outPill: { backgroundColor: '#fee2e2' }, neutralPill: { backgroundColor: '#eee8df' },
-  directionText: { fontSize: 12, lineHeight: 21, fontWeight: '700', includeFontPadding: true },
+  directionText: { fontSize: 12, lineHeight: 21, fontWeight: '700', includeFontPadding: false, flexShrink: 0 },
   movementAmount: { fontSize: 22, lineHeight: 34, fontWeight: '700', color: COLORS.ink, includeFontPadding: true },
   entryValue: { color: '#047857' }, exitValue: { color: '#b91c1c' },
   detailBlock: { gap: 3 }, detailLabel: { fontSize: 11, lineHeight: 19, color: COLORS.muted, includeFontPadding: true },
@@ -517,6 +592,23 @@ const s = StyleSheet.create({
   pagination: { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 14, gap: 9 },
   pageText: { color: COLORS.ink, fontSize: 13, lineHeight: 22, fontWeight: '700', includeFontPadding: true },
   footer: { fontSize: 12, lineHeight: 21, textAlign: 'center', color: COLORS.muted, paddingTop: 12 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  dateInput: { flex: 1, minWidth: 0 },
+  calendarButton: { width: 52, height: 49, borderRadius: 11, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.paper, alignItems: 'center', justifyContent: 'center' },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  calendarPanel: { width: '100%', maxWidth: 380, backgroundColor: COLORS.paper, borderRadius: 17, padding: 15 },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15, gap: 4 },
+  calendarHeading: { flex: 1, minWidth: 0, textAlign: 'center', fontSize: 14, lineHeight: 25, fontWeight: '700', color: COLORS.ink, textTransform: 'capitalize', paddingHorizontal: 0, includeFontPadding: false },
+  calendarNav: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.285714%', height: 43, justifyContent: 'center', alignItems: 'center' },
+  calendarWeekday: { color: COLORS.muted, fontWeight: '700', fontSize: 12 },
+  calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarDaySelected: { backgroundColor: COLORS.gold },
+  calendarDayText: { width: 34, color: COLORS.ink, fontSize: 13, lineHeight: 21, fontWeight: '600', textAlign: 'center', includeFontPadding: false },
+  calendarDayTextSelected: { color: COLORS.paper },
+  calendarClose: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 12, marginTop: 12 },
+  calendarCloseText: { width: 78, textAlign: 'center', color: COLORS.gold, fontWeight: '700', fontSize: 14, lineHeight: 21, includeFontPadding: false },
   modalOverlay: { flex: 1, backgroundColor: '#0008', padding: 20, justifyContent: 'center' },
   pickerCard: { backgroundColor: '#fff', borderRadius: 18, padding: 18, maxHeight: '80%' },
   pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 },

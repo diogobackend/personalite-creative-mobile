@@ -480,7 +480,7 @@ export default function AtualizarVendaScreen() {
                 ...previous, hasDeliveryDeadline: value, deliveryDeadline: value ? previous.deliveryDeadline : '',
                 delivered: value ? previous.delivered : false,
               } : previous)} />
-              {form.hasDeliveryDeadline ? <Field label="Prazo de entrega (DD/MM/AAAA)">
+              {form.hasDeliveryDeadline ? <Field label="Data de entrega">
                 <View style={styles.dateRow}>
                   <TextInput value={form.deliveryDeadline} onChangeText={value => update('deliveryDeadline', maskDate(value))} style={[styles.input, styles.dateInput]} placeholder="DD/MM/AAAA" placeholderTextColor="#a8a29e" keyboardType="number-pad" maxLength={10} />
                   <Pressable style={styles.calendarButton} onPress={openCalendar} accessibilityLabel="Selecionar data no calendário">
