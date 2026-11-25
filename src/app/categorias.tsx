@@ -4,8 +4,11 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import {
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
-  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal,
+  Text as NativeText,
+  Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet,
+  TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -56,13 +59,13 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-// Sem flexShrink ou espaços artificiais: no Android, esses ajustes
-// podem cortar o último glifo quando o texto compartilha uma linha.
-function SafeText({ style, children, ...props }: ComponentProps<typeof Text>) {
+// Reserva caracteres extras no fim para evitar o corte de glifos no Android.
+// Mantém todas as palavras, rotas e interações da tela original.
+function SafeText({ style, children, ...props }: ComponentProps<typeof NativeText>) {
   return (
-    <Text {...props} style={[styles.safeText, style]}>
-      {children}
-    </Text>
+    <NativeText {...props} style={[styles.safeText, style]}>
+      {children}{'\u00A0\u00A0\u00A0'}
+    </NativeText>
   );
 }
 
@@ -200,7 +203,7 @@ export default function CategoriasScreen() {
 
   const renderTypeChoice = (value: CategoryType | 'ALL', label: string, selected: boolean, onPress: () => void) => (
     <Pressable key={value} onPress={onPress} style={[styles.typeChip, selected && styles.typeChipSelected]}>
-      <Text style={[styles.typeChipText, selected && styles.typeChipTextSelected]}>{label}</Text>
+      <SafeText style={[styles.typeChipText, selected && styles.typeChipTextSelected]}>{label}</SafeText>
     </Pressable>
   );
 
@@ -237,7 +240,7 @@ export default function CategoriasScreen() {
           </View>
           <Pressable disabled={saving} style={[styles.primaryButton, saving && styles.disabled]} onPress={() => void createCategory()}>
             {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name="add" color="#fff" size={21} />}
-            <Text style={styles.primaryButtonText}>{saving ? 'Cadastrando...' : 'Cadastrar categoria'}</Text>
+            <SafeText style={styles.primaryButtonText}>{saving ? 'Cadastrando...' : 'Cadastrar categoria'}</SafeText>
           </Pressable>
         </View>
 
@@ -266,9 +269,9 @@ export default function CategoriasScreen() {
             <View style={[styles.groupHeader, { backgroundColor: group.header, borderBottomColor: group.border }]}>
               <View style={styles.groupHeadingLeft}>
                 <Ionicons name={group.icon} size={22} color={PALETTE.dark} />
-                <Text style={styles.groupTitle}>{group.title}</Text>
+                <SafeText style={styles.groupTitle}>{group.title}</SafeText>
               </View>
-              <View style={styles.countBadge}><Text style={styles.countText}>{loading || loadError ? '—' : String(items.length)}</Text></View>
+              <View style={styles.countBadge}><SafeText style={styles.countText}>{loading || loadError ? '—' : String(items.length)}</SafeText></View>
             </View>
             {loading ? <View style={styles.emptyState}><ActivityIndicator color={PALETTE.gold} /></View> :
               loadError ? <SafeText style={styles.emptyText}>Listagem indisponível.</SafeText> :
@@ -290,13 +293,13 @@ export default function CategoriasScreen() {
                     </View>
                   </View> : <View style={styles.categoryHeader}>
                     <View style={styles.categoryNameRow}>
-                      <Text style={styles.categoryName}>{category.name}</Text>
+                      <SafeText style={styles.categoryName}>{category.name}</SafeText>
                       {category.type === 'PRODUCT' && (
                         <View style={styles.codeBadge} accessibilityLabel={`Código ${codes.get(category.id) ?? '—'}`}>
                           {(codes.get(category.id) ?? '—').split('').map((digit, index) => (
-                            <Text key={`${category.id}-${index}`} style={styles.codeDigit} allowFontScaling={false}>
+                            <NativeText key={`${category.id}-${index}`} style={styles.codeDigit} allowFontScaling={false}>
                               {digit}
-                            </Text>
+                            </NativeText>
                           ))}
                         </View>
                       )}
@@ -359,15 +362,15 @@ export default function CategoriasScreen() {
           <View style={styles.drawerHeading}>
             <Image source={require('../../assets/images/personalite-logo.png')} resizeMode="contain" style={styles.drawerLogo} />
             <View style={styles.drawerBrandText}>
-              <Text style={styles.drawerEyebrow}>PERSONALITÉ</Text>
-              <Text style={styles.drawerTitle}>Creative</Text>
+              <SafeText style={styles.drawerEyebrow}>PERSONALITÉ</SafeText>
+              <SafeText style={styles.drawerTitle}>Creative</SafeText>
             </View>
             <Pressable onPress={() => setMenuOpen(false)} accessibilityLabel="Fechar menu">
               <Ionicons name="close" size={24} color="#fff" />
             </Pressable>
           </View>
           <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent}>
-            <Text style={styles.drawerSection}>MENU PRINCIPAL</Text>
+            <SafeText style={styles.drawerSection}>MENU PRINCIPAL</SafeText>
             {MENU_ITEMS.map(item => (
               <Pressable
                 key={item.label}
@@ -376,22 +379,22 @@ export default function CategoriasScreen() {
                 accessibilityRole="button"
               >
                 <Ionicons name={item.icon} size={20} color={item.url === '/categorias' ? '#fff' : '#d8d0c6'} />
-                <Text style={[styles.drawerItemText, item.url === '/categorias' && styles.drawerItemSelected]}>{item.label}</Text>
+                <SafeText style={[styles.drawerItemText, item.url === '/categorias' && styles.drawerItemSelected]}>{item.label}</SafeText>
               </Pressable>
             ))}
-            <Text style={[styles.drawerSection, { marginTop: 24 }]}>SISTEMA</Text>
+            <SafeText style={[styles.drawerSection, { marginTop: 14 }]}>SISTEMA</SafeText>
             <Pressable style={styles.drawerItem} onPress={() => navigateMenu('Meu Perfil', '/perfil')}>
               <Ionicons name="settings-outline" size={20} color="#d8d0c6" />
-              <Text style={styles.drawerItemText}>Meu Perfil</Text>
+              <SafeText style={styles.drawerItemText}>Meu Perfil</SafeText>
             </Pressable>
+            <View style={styles.drawerFooter}>
+              <SafeText style={styles.drawerFooterText}>Personalité Creative</SafeText>
+              <Pressable onPress={() => void logout()} accessibilityLabel="Sair da conta" style={styles.logoutAction}>
+                <Ionicons name="log-out-outline" color="#d8d0c6" size={23} />
+                <SafeText style={styles.drawerLogoutText}>Sair</SafeText>
+              </Pressable>
+            </View>
           </ScrollView>
-          <View style={styles.drawerFooter}>
-            <Text style={styles.drawerFooterText}>Personalité Creative</Text>
-            <Pressable onPress={() => void logout()} accessibilityLabel="Sair da conta" style={styles.logoutAction}>
-              <Ionicons name="log-out-outline" color="#d8d0c6" size={23} />
-              <Text style={styles.drawerItemText}>Sair</Text>
-            </Pressable>
-          </View>
         </SafeAreaView>
       </View>
     </Modal>
@@ -416,7 +419,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 9, marginBottom: 12, alignItems: 'flex-start' },
   typeChip: { width: '47%', borderRadius: 9, borderWidth: 1, borderColor: PALETTE.border, backgroundColor: '#fff', minHeight: 43, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 9 },
   typeChipSelected: { borderColor: PALETTE.gold, backgroundColor: '#f4ead8' },
-  typeChipText: { fontSize: 13, lineHeight: 22, color: PALETTE.muted, includeFontPadding: true, textAlign: 'center' },
+  typeChipText: { fontSize: 13, lineHeight: 22, color: PALETTE.muted, includeFontPadding: true, textAlign: 'center', paddingHorizontal: 7 },
   typeChipTextSelected: { color: '#846335', fontWeight: '700' },
   primaryButton: { backgroundColor: PALETTE.gold, minHeight: 49, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 11, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   primaryButtonText: { color: '#fff', fontSize: 14, lineHeight: 24, fontWeight: '700', includeFontPadding: true, textAlign: 'center' },
@@ -429,16 +432,16 @@ const styles = StyleSheet.create({
   linkText: { color: PALETTE.gold, fontWeight: '700', marginTop: 9, fontSize: 13, lineHeight: 22 },
   groupCard: { borderWidth: 2, borderRadius: 17, overflow: 'hidden', marginBottom: 17 },
   groupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, padding: 15, gap: 10 },
-  groupHeadingLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
-  groupTitle: { fontSize: 18, lineHeight: 29, fontWeight: '700', color: PALETTE.dark, includeFontPadding: true },
+  groupHeadingLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, paddingRight: 8 },
+  groupTitle: { flexShrink: 1, fontSize: 18, lineHeight: 29, fontWeight: '700', color: PALETTE.dark, includeFontPadding: true, paddingRight: 12 },
   countBadge: { minWidth: 44, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f4ede2', alignItems: 'center', justifyContent: 'center' },
-  countText: { fontSize: 12, lineHeight: 20, fontWeight: '700', color: '#846335' },
+  countText: { fontSize: 12, lineHeight: 20, fontWeight: '700', color: '#846335', paddingRight: 5 },
   categoryRow: { backgroundColor: '#fff', marginHorizontal: 9, marginVertical: 5, borderRadius: 11, borderWidth: 1, borderColor: '#eee8df', padding: 13 },
   categoryHeader: { gap: 11 },
   categoryNameRow: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%' },
-  categoryName: { flex: 1, fontSize: 15, lineHeight: 27, fontWeight: '600', color: PALETTE.dark, includeFontPadding: true },
-  codeBadge: { borderRadius: 6, backgroundColor: '#f4ede2', width: 66, minHeight: 35, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  codeDigit: { width: 17, fontSize: 13, lineHeight: 22, fontWeight: '700', color: '#846335', textAlign: 'center', includeFontPadding: true },
+  categoryName: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 27, fontWeight: '600', color: PALETTE.dark, includeFontPadding: true, paddingRight: 12 },
+  codeBadge: { borderRadius: 6, backgroundColor: '#f4ede2', width: 48, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  codeDigit: { width: 17, fontSize: 12, lineHeight: 20, fontWeight: '700', color: '#846335', textAlign: 'center', includeFontPadding: true, fontVariant: ['tabular-nums'] },
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 11 },
   iconAction: { width: 39, height: 39, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: '#faf8f5', borderWidth: 1, borderColor: PALETTE.border },
   editBlock: { gap: 8 },
@@ -462,19 +465,20 @@ const styles = StyleSheet.create({
   detailValue: { color: PALETTE.dark, fontSize: 15, lineHeight: 24, fontWeight: '600', includeFontPadding: true },
   drawerBackdrop: { flex: 1, backgroundColor: '#0008', flexDirection: 'row' },
   drawer: { width: '82%', maxWidth: 310, height: '100%', backgroundColor: '#39342f' },
-  drawerHeading: { flexDirection: 'row', gap: 11, alignItems: 'center', paddingHorizontal: 17, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#ffffff1b' },
+  drawerHeading: { flexDirection: 'row', gap: 11, alignItems: 'center', paddingHorizontal: 17, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#ffffff1b' },
   drawerTitle: { color: '#fff', fontSize: 21, lineHeight: 29, fontFamily: 'serif' },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 15, minHeight: 47, borderRadius: 11, marginBottom: 3 },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 15, minHeight: 43, borderRadius: 11, marginBottom: 2 },
   drawerActive: { backgroundColor: '#b99b66' },
-  drawerItemText: { color: '#d8d0c6', fontSize: 14, lineHeight: 23, includeFontPadding: true },
-  drawerLogo: { width: 52, height: 62 },
+  drawerItemText: { flex: 1, minWidth: 0, color: '#d8d0c6', fontSize: 14, lineHeight: 24, includeFontPadding: true, paddingRight: 18 },
+  drawerLogo: { width: 48, height: 55 },
   drawerBrandText: { flex: 1 },
   drawerEyebrow: { color: '#d5bd91', fontSize: 10, letterSpacing: 2, fontWeight: '700' },
   drawerScroll: { flex: 1 },
-  drawerScrollContent: { paddingHorizontal: 13, paddingTop: 24, paddingBottom: 28 },
-  drawerSection: { paddingHorizontal: 12, color: '#a99e90', letterSpacing: 2, fontSize: 10, fontWeight: '700', marginBottom: 14 },
+  drawerScrollContent: { paddingHorizontal: 13, paddingTop: 13, paddingBottom: 20, flexGrow: 1 },
+  drawerSection: { paddingHorizontal: 12, color: '#a99e90', letterSpacing: 2, fontSize: 10, fontWeight: '700', marginBottom: 14, lineHeight: 19 },
   drawerItemSelected: { color: '#fff', fontWeight: '700' },
-  drawerFooter: { borderTopWidth: 1, borderTopColor: '#ffffff1b', paddingHorizontal: 18, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  drawerFooterText: { color: '#d8d0c6', fontSize: 12, flex: 1 },
+  drawerFooter: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#ffffff1b', paddingHorizontal: 9, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  drawerFooterText: { color: '#d8d0c6', fontSize: 12, flex: 1, paddingRight: 10 },
   logoutAction: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  drawerLogoutText: { color: '#d8d0c6', fontSize: 14, lineHeight: 24, includeFontPadding: true },
 });

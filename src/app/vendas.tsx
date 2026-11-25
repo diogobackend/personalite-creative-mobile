@@ -250,7 +250,6 @@ export default function VendasScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setReloadKey(n => n + 1); }} colors={[C.gold]} tintColor={C.gold} />}
         contentContainerStyle={styles.content}>
         <View style={styles.pageHead}>
-          <Text style={styles.heading}>Gestão de vendas</Text>
           <PrimaryButton title="Nova venda" icon="add" onPress={() => router.push('/vendas/nova' as never)} />
         </View>
         <View style={styles.metrics}>
