@@ -62,9 +62,9 @@ const QUICK: { label: string; field: keyof Filters; value: string }[] = [
   { label: 'Pagas', field: 'paymentStatus', value: 'PAID' },
   { label: 'Atrasadas', field: 'deadlineStatus', value: 'OVERDUE' },
   { label: 'Vencem hoje', field: 'deadlineStatus', value: 'DUE_TODAY' },
-  { label: 'Próximos 7 dias', field: 'dueWithinDays', value: '7' },
-  { label: 'Próximos 30 dias', field: 'dueWithinDays', value: '30' },
-  { label: 'Sem prazo', field: 'deadlineStatus', value: 'NO_DEADLINE' },
+  { label: 'Vencem nos próximos 7 dias', field: 'dueWithinDays', value: '7' },
+  { label: 'Vencem nos próximos 30 dias', field: 'dueWithinDays', value: '30' },
+  { label: 'Sem prazos', field: 'deadlineStatus', value: 'NO_DEADLINE' },
   { label: 'Entregues', field: 'delivered', value: 'true' },
   { label: 'Não entregues', field: 'delivered', value: 'false' },
 ];
@@ -142,12 +142,12 @@ function SummaryCard({ label, value, icon }: { label: string; value: string; ico
 }
 function OutlineButton({ title, icon, onPress, disabled = false }: { title: string; icon?: IconName; onPress: () => void; disabled?: boolean }) {
   return <Pressable onPress={onPress} disabled={disabled} style={[styles.outlineButton, disabled && styles.disabled]}>
-    {icon ? <Ionicons name={icon} size={17} color={C.gold} /> : null}<Text style={styles.outlineButtonText}>{title}</Text>
+    {icon ? <Ionicons name={icon} size={17} color={C.gold} /> : null}<Text style={styles.outlineButtonText}>{title}{'\u00A0\u00A0'}</Text>
   </Pressable>;
 }
 function PrimaryButton({ title, icon, onPress, disabled = false }: { title: string; icon?: IconName; onPress: () => void; disabled?: boolean }) {
   return <Pressable onPress={onPress} disabled={disabled} style={[styles.primaryButton, disabled && styles.disabled]}>
-    {icon ? <Ionicons name={icon} size={18} color="#fff" /> : null}<Text style={styles.primaryButtonText}>{title}</Text>
+    {icon ? <Ionicons name={icon} size={18} color="#fff" /> : null}<Text style={styles.primaryButtonText}>{title}{'\u00A0\u00A0'}</Text>
   </Pressable>;
 }
 
@@ -270,7 +270,16 @@ export default function VendasScreen() {
           <View style={styles.chipWrap}>{QUICK.map(item => {
             const selected = applied[item.field] === item.value;
             return <Pressable key={`${item.field}-${item.value}`} onPress={() => quickFilter(item.field, item.value)} style={[styles.chip, selected && styles.chipSelected]}>
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{item.label}</Text>
+              <TextInput
+                value={item.label}
+                editable={false}
+                multiline
+                scrollEnabled={false}
+                pointerEvents="none"
+                contextMenuHidden
+                accessibilityLabel={item.label}
+                style={[styles.chipText, selected && styles.chipTextSelected]}
+              />
             </Pressable>;
           })}</View>
           <OutlineButton title={advanced ? 'Ocultar filtros avançados' : 'Filtros avançados'} icon="options-outline" onPress={() => setAdvanced(x => !x)} />
@@ -321,7 +330,7 @@ export default function VendasScreen() {
                   <View style={styles.saleHeadText}><Text style={styles.customerName}>{customer}</Text>
                     <Text style={styles.meta}>Venda {sale.id.slice(0, 8).toUpperCase()} · {fmtDate(sale.createdAt)}</Text></View>
                   <View style={[styles.statusPill, sale.paymentStatus === 'PAID' ? styles.pillPaid : sale.paymentStatus === 'UNPAID' ? styles.pillUnpaid : styles.pillPartial]}>
-                    <Text style={styles.statusText}>{statusLabel(sale.paymentStatus)}</Text>
+                    <Text style={styles.statusText}>{statusLabel(sale.paymentStatus)}{'\u00A0\u00A0'}</Text>
                   </View>
                 </View>
                 <View style={styles.saleInfoRow}><Text style={styles.saleInfoLabel}>Produtos</Text>
@@ -332,7 +341,7 @@ export default function VendasScreen() {
                   <View style={styles.moneyCell}><Text style={styles.smallLabel}>Restante</Text><Text style={styles.moneyValue}>{fmtMoney(sale.remainingAmount)}</Text></View>
                 </View>
                 <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, sale.paidPercentage ?? 0))}%` as `${number}%` }]} /></View>
-                <Text style={styles.meta}>{sale.paidPercentage ?? 0}% pago · {methodLabel(sale.paymentMethod)}</Text>
+                <Text style={styles.meta}>{sale.paidPercentage ?? 0}% Pago · {methodLabel(sale.paymentMethod)}{'\u00A0'}</Text>
                 <Text style={styles.meta}>Entrega: {deadline}{sale.deliveryDeadline && !delivered ? ` · ${fmtDate(sale.deliveryDeadline)}` : ''}</Text>
                 <View style={styles.saleActions}>
                   <OutlineButton title="Visualizar" icon="eye-outline" onPress={() => router.push(`/vendas/${sale.id}` as never)} />
@@ -375,12 +384,12 @@ export default function VendasScreen() {
           <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerContent}>
             <Text style={styles.drawerSection}>MENU PRINCIPAL</Text>
             {MENU.map(item => <Pressable key={item.label} style={[styles.drawerItem, item.route === '/vendas' && styles.drawerActive]} onPress={() => navigate(item.label, item.route)}>
-              <Ionicons name={item.icon} size={19} color="#eee7db" /><Text style={styles.drawerItemText}>{item.label}</Text>
+              <Ionicons name={item.icon} size={19} color="#eee7db" /><Text style={styles.drawerItemText}>{item.label}{'\u00A0\u00A0'}</Text>
             </Pressable>)}
             <Text style={styles.drawerSection}>SISTEMA</Text>
-            <Pressable style={styles.drawerItem} onPress={() => navigate('Meu Perfil', '/perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={styles.drawerItemText}>Meu Perfil</Text></Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => navigate('Meu Perfil', '/perfil')}><Ionicons name="settings-outline" size={19} color="#eee7db" /><Text style={styles.drawerItemText}>Meu Perfil{'\u00A0\u00A0'}</Text></Pressable>
           </ScrollView>
-          <Pressable style={styles.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db" /><Text style={styles.drawerItemText}>Sair</Text></Pressable>
+          <Pressable style={styles.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db" /><Text style={styles.drawerLogoutText}>Sair{'\u00A0'}</Text></Pressable>
         </SafeAreaView>
       </View>
     </Modal>
@@ -410,17 +419,17 @@ const styles = StyleSheet.create({
   column: { flex: 1, minWidth: 0 },
   select: { borderWidth: 1, borderColor: C.border, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 12, minHeight: 49, flexDirection: 'row', alignItems: 'center', gap: 8 },
   selectText: { flex: 1, color: C.ink, fontSize: 13, lineHeight: 21, includeFontPadding: true },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: { borderWidth: 1, borderColor: C.border, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 11, backgroundColor: '#fff' },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16, justifyContent: 'space-between' },
+  chip: { width: '48%', minHeight: 66, borderWidth: 1, borderColor: C.border, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 11, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
   chipSelected: { backgroundColor: '#f4ead8', borderColor: C.gold },
-  chipText: { color: C.muted, fontSize: 12, lineHeight: 22, fontWeight: '600', includeFontPadding: true },
+  chipText: { width: '100%', minHeight: 48, color: C.muted, fontSize: 12, lineHeight: 18, fontWeight: '600', includeFontPadding: true, textAlign: 'center', textAlignVertical: 'center', paddingHorizontal: 4, paddingVertical: 2 },
   chipTextSelected: { color: '#76592e' },
   advancedPanel: { backgroundColor: '#fcfaf7', borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 13, marginTop: 14, marginBottom: 16 },
   filterActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 9, justifyContent: 'flex-end', marginTop: 15 },
-  outlineButton: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 13, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: '#fff', minHeight: 44 },
-  outlineButtonText: { color: '#80623d', fontSize: 13, lineHeight: 22, fontWeight: '600', includeFontPadding: true },
-  primaryButton: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 11, borderRadius: 11, backgroundColor: C.gold, minHeight: 46 },
-  primaryButtonText: { color: '#fff', fontSize: 13, lineHeight: 23, fontWeight: '700', includeFontPadding: true },
+  outlineButton: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: '#fff', minHeight: 46, minWidth: 120 },
+  outlineButtonText: { color: '#80623d', fontSize: 12, lineHeight: 22, fontWeight: '600', includeFontPadding: true, paddingRight: 4 },
+  primaryButton: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 11, backgroundColor: C.gold, minHeight: 48, minWidth: 160 },
+  primaryButtonText: { color: '#fff', fontSize: 13, lineHeight: 23, fontWeight: '700', includeFontPadding: true, paddingRight: 5 },
   disabled: { opacity: 0.45 },
   helper: { color: C.muted, fontSize: 12, lineHeight: 21, marginBottom: 13, includeFontPadding: true },
   feedback: { alignItems: 'center', gap: 14, paddingVertical: 28 }, error: { color: '#b91c1c', fontSize: 13, lineHeight: 23, textAlign: 'center' },
@@ -428,12 +437,12 @@ const styles = StyleSheet.create({
   saleCard: { backgroundColor: '#fdfbf8', borderWidth: 1, borderColor: C.border, borderRadius: 13, padding: 15, marginBottom: 13, gap: 7 },
   saleHead: { gap: 8, marginBottom: 5 }, saleHeadText: { gap: 3 },
   customerName: { color: C.ink, fontSize: 17, lineHeight: 28, fontWeight: '700', includeFontPadding: true },
-  meta: { color: C.muted, fontSize: 12, lineHeight: 21, includeFontPadding: true },
-  statusPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  meta: { color: C.muted, fontSize: 12, lineHeight: 22, includeFontPadding: true, paddingRight: 8 },
+  statusPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 8, minWidth: 95 },
   pillPaid: { backgroundColor: '#d1fae5' }, pillUnpaid: { backgroundColor: '#fee2e2' }, pillPartial: { backgroundColor: '#fef3c7' },
-  statusText: { fontSize: 12, lineHeight: 21, color: C.ink, fontWeight: '700', includeFontPadding: true },
+  statusText: { fontSize: 12, lineHeight: 22, color: C.ink, fontWeight: '700', includeFontPadding: true, paddingRight: 5 },
   saleInfoRow: { gap: 4, marginTop: 3 }, saleInfoLabel: { color: C.muted, fontSize: 12, lineHeight: 20 },
-  saleInfoValue: { color: C.ink, fontSize: 14, lineHeight: 22, fontWeight: '600' },
+  saleInfoValue: { color: C.ink, fontSize: 14, lineHeight: 22, fontWeight: '600', paddingRight: 10 },
   totalValue: { color: C.ink, fontSize: 20, lineHeight: 31, fontWeight: '700' },
   moneyPair: { flexDirection: 'row', gap: 10, marginTop: 5 },
   moneyCell: { flex: 1, minWidth: 0, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: C.border, padding: 10 },
@@ -455,13 +464,14 @@ const styles = StyleSheet.create({
   pickerOptionText: { flex: 1, fontSize: 14, lineHeight: 23, color: C.ink },
   drawerOverlay: { flex: 1, flexDirection: 'row', backgroundColor: '#0008' },
   drawer: { width: '82%', maxWidth: 310, backgroundColor: C.darkMenu, height: '100%' },
-  drawerBrand: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 18, gap: 10, borderBottomWidth: 1, borderBottomColor: '#ffffff22' },
+  drawerBrand: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 10, borderBottomWidth: 1, borderBottomColor: '#ffffff22' },
   drawerLogo: { height: 65, width: 56 }, drawerBrandText: { flex: 1 },
   drawerEyebrow: { fontSize: 11, lineHeight: 18, letterSpacing: 2, fontWeight: '700', color: '#d5bd91' },
   drawerTitle: { color: '#fff', fontFamily: 'serif', fontSize: 21, lineHeight: 29 },
-  drawerScroll: { flex: 1 }, drawerContent: { padding: 14, paddingBottom: 25 },
-  drawerSection: { color: '#b1a698', fontSize: 10, lineHeight: 19, fontWeight: '700', letterSpacing: 1.7, marginBottom: 14, marginTop: 18 },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 15, minHeight: 49, gap: 12, marginBottom: 4 },
-  drawerActive: { backgroundColor: '#665949' }, drawerItemText: { color: '#eee7db', fontSize: 14, lineHeight: 23, fontWeight: '600', includeFontPadding: true },
-  drawerLogout: { paddingHorizontal: 27, paddingVertical: 21, flexDirection: 'row', alignItems: 'center', gap: 13, borderTopWidth: 1, borderTopColor: '#ffffff22' },
+  drawerScroll: { flex: 1 }, drawerContent: { paddingHorizontal: 13, paddingTop: 13, paddingBottom: 20 },
+  drawerSection: { color: '#b1a698', fontSize: 10, lineHeight: 19, fontWeight: '700', letterSpacing: 1.7, marginBottom: 10, marginTop: 12 },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 15, minHeight: 44, gap: 12, marginBottom: 2 },
+  drawerActive: { backgroundColor: '#665949' }, drawerItemText: { flex: 1, minWidth: 0, color: '#eee7db', fontSize: 14, lineHeight: 24, fontWeight: '600', includeFontPadding: true, paddingRight: 12 },
+  drawerLogout: { paddingHorizontal: 27, paddingVertical: 17, flexDirection: 'row', alignItems: 'center', gap: 13, borderTopWidth: 1, borderTopColor: '#ffffff22' },
+  drawerLogoutText: { color: '#eee7db', fontSize: 14, lineHeight: 24, fontWeight: '600', includeFontPadding: true, paddingRight: 12 },
 });

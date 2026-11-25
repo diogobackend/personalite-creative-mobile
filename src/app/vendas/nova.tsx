@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
-    ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
-    ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
@@ -60,12 +60,25 @@ const getUnitPrice = (product: Product | undefined, qty: number): number | null 
   return (tiers.filter(t => qty >= t.minimumQuantity).at(-1) ?? tiers[0]).unitPrice;
 };
 const adjustment = (item: SaleItem) => item.adjustmentType === 'discount' ? -amount(item.adjustmentAmount) : amount(item.adjustmentAmount);
-const validDate = (date: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const [y, m, d] = date.split('-').map(Number);
-  const parsed = new Date(y, m - 1, d);
-  return parsed.getFullYear() === y && parsed.getMonth() === m - 1 && parsed.getDate() === d;
+// A interface recebe DD/MM/AAAA; a API continua recebendo AAAA-MM-DD.
+const formatBrazilianDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 };
+const dateToIso = (value: string): string | null => {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return null;
+  const [day, month, year] = value.split('/').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
+  return `${year.toString().padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+const validDate = (value: string) => dateToIso(value) !== null;
+const dateToBrazilian = (value: Date) =>
+  `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}/${value.getFullYear()}`;
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 // Reserva uma margem no fim de cada texto para evitar o corte do último caractere no Android.
 function SafeText({ style, ...props }: ComponentProps<typeof Text>) {
@@ -82,7 +95,7 @@ function SelectButton({ label, value, placeholder, onPress }: { label: string; v
 }
 function Choice({ label, selected, onPress, danger = false }: { label: string; selected: boolean; onPress: () => void; danger?: boolean }) {
   return <Pressable onPress={onPress} style={[styles.choice, selected && styles.choiceSelected, danger && selected && styles.choiceDanger]}>
-    <SafeText style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</SafeText>
+    <SafeText style={[styles.choiceText, (label === 'Sim' || label === 'Não') && styles.booleanChoiceText, selected && styles.choiceTextSelected]} allowFontScaling={false}>{label}{'\u00A0\u00A0\u00A0'}</SafeText>
   </Pressable>;
 }
 
@@ -99,6 +112,24 @@ export default function NovaVendaScreen() {
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const openCalendar = () => {
+    const iso = dateToIso(form.deliveryDeadline);
+    const selected = iso ? new Date(`${iso}T12:00:00`) : new Date();
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setCalendarOpen(true);
+  };
+  const shiftMonth = (offset: number) => setCalendarMonth(previous =>
+    new Date(previous.getFullYear(), previous.getMonth() + offset, 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const offset = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return [...Array.from({ length: offset }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
+  }, [calendarMonth]);
   const update = <K extends keyof Form>(field: K, value: Form[K]) => setForm(old => ({ ...old, [field]: value }));
   const updateItem = (key: number, patch: Partial<SaleItem>) => setForm(old => ({
     ...old, items: old.items.map(item => item.key === key ? { ...item, ...patch } : item),
@@ -167,7 +198,7 @@ export default function NovaVendaScreen() {
     if (form.items.some(item => (getUnitPrice(products.find(p => p.id === item.productId), item.quantity) ?? 0) <= 0))
       return Alert.alert('Validação', 'Um ou mais produtos estão sem preço de venda válido.');
     if (form.hasDeliveryDeadline && !validDate(form.deliveryDeadline))
-      return Alert.alert('Validação', 'Informe uma data de entrega válida no formato AAAA-MM-DD.');
+      return Alert.alert('Validação', 'Informe uma data de entrega válida no formato DD/MM/AAAA.');
     if (!validMoney(form.additionalAmount) || amount(form.additionalAmount) < 0)
       return Alert.alert('Validação', 'Informe um adicional válido, com até duas casas decimais.');
     for (const item of form.items) {
@@ -186,7 +217,7 @@ export default function NovaVendaScreen() {
       if (!token) { router.replace('/'); return; }
       await api.post('/sales', {
         customerId: form.customerId,
-        deliveryDeadline: form.hasDeliveryDeadline ? form.deliveryDeadline : null,
+        deliveryDeadline: form.hasDeliveryDeadline ? dateToIso(form.deliveryDeadline) : null,
         totalAmount: Number(total.toFixed(2)),
         additionalAmount: Number(amount(form.additionalAmount).toFixed(2)),
         additionalDescription: form.additionalDescription.trim() || null,
@@ -223,20 +254,44 @@ export default function NovaVendaScreen() {
           <SafeText style={styles.pageTitle}>Nova venda</SafeText>
           <Pressable disabled={loading || saving} onPress={() => void save()} style={[styles.registerTop, (loading || saving) && styles.disabled]}>
             {saving ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="save-outline" color="#fff" size={17} />}
-            <SafeText style={styles.primaryText}>Registrar</SafeText>
+            <SafeText style={[styles.primaryText, styles.registerTopText]} allowFontScaling={false}>Registrar{'\u00A0\u00A0'}</SafeText>
           </Pressable>
         </View>
-        {loading && <View style={styles.loading}><ActivityIndicator size="large" color={C.gold} /><SafeText style={styles.muted}>Carregando clientes e produtos...</SafeText></View>}
-        <View style={styles.card}>
-          <SelectButton label="Cliente *" value={chosenCustomer?.name} placeholder="Selecione ou busque um cliente" onPress={() => openPicker(
-            'Selecionar cliente', form.customerId, customers.map(c => ({ id: c.id, label: c.name,
-              detail: [c.email, c.cpf, c.rg, c.phone].filter(Boolean).slice(0, 2).join(' · ') })),
-            id => update('customerId', id),
-          )} />
-        </View>
+        {loading && <View style={styles.loading}><ActivityIndicator size="large" color={C.gold} /><SafeText style={styles.muted}>Carregando dados...</SafeText></View>}
+        
+<View style={styles.card}>
+  <SelectButton
+    label="Cliente"
+    value={chosenCustomer?.name}
+    placeholder="Selecione ou busque um cliente"
+    onPress={() =>
+      openPicker(
+        'Selecionar cliente',
+        form.customerId,
+        customers.map(c => ({
+          id: c.id,
+          label: c.name,
+          detail: [
+            c.email &&
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@/i.test(c.email)
+              ? c.email
+              : null,
+            c.cpf,
+            c.rg,
+            c.phone,
+          ]
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(' · '),
+        })),
+        id => update('customerId', id),
+      )
+    }
+  />
+</View>
+
 
         <View style={styles.productsSection}>
-          <SafeText style={styles.sectionHeading}>Produtos da venda</SafeText>
           {form.items.map((item, index) => {
             const product = products.find(p => p.id === item.productId);
             const unit = getUnitPrice(product, item.quantity) ?? 0;
@@ -249,20 +304,25 @@ export default function NovaVendaScreen() {
             const featureKey = `features-${item.key}`;
             const adjustmentKey = `adjustment-${item.key}`;
             return <View key={item.key} style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <SafeText style={styles.itemHeading}>Produto {index + 1}</SafeText>
-                <Pressable disabled={form.items.length === 1} onPress={() => update('items', form.items.filter(i => i.key !== item.key))} style={form.items.length === 1 && styles.disabled} accessibilityLabel="Remover produto">
+              
+                
+               <Pressable
+                  disabled={form.items.length === 1}
+                  onPress={() => update('items', form.items.filter(i => i.key !== item.key))}
+                  style={[{ alignSelf: 'flex-end' }, form.items.length === 1 && styles.disabled]}
+                  accessibilityLabel="Remover produto"
+                >
                   <Ionicons name="trash-outline" size={20} color="#b4534d" />
-                </Pressable>
-              </View>
-              <SelectButton label="Produto *" value={product?.name} placeholder="Nome ou código comercial" onPress={() => openPicker(
+              </Pressable>
+             
+              <SelectButton label="" value={product?.name} placeholder="Produto ou código comercial" onPress={() => openPicker(
                 'Selecionar produto', item.productId,
                 products.map(p => ({ id: p.id, label: p.name, detail: p.commercialCode ?? '' })),
                 productId => updateItem(item.key, { productId, color: '', size: '', material: '', brand: '', model: '' }),
               )} />
               <View style={styles.quantityRow}>
                 <View style={styles.quantityColumn}>
-                  <Label>Quantidade *</Label>
+                  <Label>Qtd</Label>
                   <View style={styles.quantityBox}>
                     <Pressable disabled={item.quantity <= 1} onPress={() => updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })} style={styles.quantityButton}>
                       <Ionicons name="remove" size={19} color={C.gold} />
@@ -275,12 +335,23 @@ export default function NovaVendaScreen() {
                   </View>
                 </View>
                 <View style={styles.totalColumn}>
-                  <Label>Valor do item</Label>
+                  <Label>Valor</Label>
                   <SafeText style={styles.money}>{currency(itemTotal)}</SafeText>
                   {product && <SafeText style={styles.small}>{currency(unit)} / un.</SafeText>}
                 </View>
               </View>
               {item.productId && <>
+              <Pressable style={styles.accordionHeader} onPress={() => flip(featureKey)}>
+                  <SafeText style={styles.accordionTitle}>Adicionar características</SafeText>
+                  <Ionicons name={expanded[featureKey] ? 'chevron-up' : 'chevron-down'} size={19} color={C.gold} />
+                </Pressable>
+                {expanded[featureKey] && <View style={styles.accordionContent}>
+                  {features.length ? features.map(([field, label, options]) => <SelectButton key={field} label={label}
+                    value={item[field]} placeholder="Selecione (opcional)" onPress={() => openPicker(label, item[field],
+                      [{ id: '', label: 'Nenhum' }, ...options.map(option => ({ id: option, label: option }))],
+                      id => updateItem(item.key, { [field]: id }))} />)
+                    : <SafeText style={styles.muted}>Nenhuma característica cadastrada nesse produto.</SafeText>}
+                </View>}
                 <Pressable style={styles.accordionHeader} onPress={() => flip(adjustmentKey)}>
                   <SafeText style={styles.accordionTitle}>Adicionar acréscimo ou desconto</SafeText>
                   <Ionicons name={expanded[adjustmentKey] ? 'chevron-up' : 'chevron-down'} size={19} color={C.gold} />
@@ -294,28 +365,32 @@ export default function NovaVendaScreen() {
                   <TextInput style={styles.input} value={item.adjustmentAmount} onChangeText={v => updateItem(item.key, { adjustmentAmount: v })}
                     keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor="#a8a29e" />
                 </View>}
-                <Pressable style={styles.accordionHeader} onPress={() => flip(featureKey)}>
-                  <SafeText style={styles.accordionTitle}>Adicionar características</SafeText>
-                  <Ionicons name={expanded[featureKey] ? 'chevron-up' : 'chevron-down'} size={19} color={C.gold} />
-                </Pressable>
-                {expanded[featureKey] && <View style={styles.accordionContent}>
-                  {features.length ? features.map(([field, label, options]) => <SelectButton key={field} label={label}
-                    value={item[field]} placeholder="Selecione (opcional)" onPress={() => openPicker(label, item[field],
-                      [{ id: '', label: 'Nenhum' }, ...options.map(option => ({ id: option, label: option }))],
-                      id => updateItem(item.key, { [field]: id }))} />)
-                    : <SafeText style={styles.muted}>Nenhuma característica cadastrada nesse produto.</SafeText>}
-                </View>}
+                
               </>}
             </View>;
           })}
-          <Pressable onPress={() => update('items', [...form.items, emptyItem(Math.max(-1, ...form.items.map(i => i.key)) + 1)])} style={styles.addProduct}>
+                    <Pressable
+            onPress={() => update('items', [
+              ...form.items,
+              emptyItem(Math.max(-1, ...form.items.map(i => i.key)) + 1),
+            ])}
+            style={styles.addProduct}
+          >
             <Ionicons name="add-circle-outline" size={20} color="#fff" />
-            <SafeText style={styles.primaryText}>Adicionar mais produtos ao carrinho</SafeText>
+            <View style={{ width: 160 }}>
+              <Text
+                style={styles.addProductText}
+                allowFontScaling={false}
+                numberOfLines={1}
+              >
+                Mais produtos
+              </Text>
+            </View>
           </Pressable>
           <View style={styles.divider} />
-          <Label>Adicional da venda (R$)</Label>
+          <Label>Taxa Adicional (R$)</Label>
           <TextInput style={styles.input} keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor="#a8a29e" value={form.additionalAmount} onChangeText={v => update('additionalAmount', v)} />
-          <Label>Descrição do adicional</Label>
+          <Label>Descrição</Label>
           <TextInput style={styles.input} placeholder="Ex.: frete, taxa de entrega..." placeholderTextColor="#a8a29e" value={form.additionalDescription} onChangeText={v => update('additionalDescription', v)} />
           <Label>Observação</Label>
           <TextInput style={[styles.input, styles.textArea]} multiline textAlignVertical="top" placeholder="Adicione observações sobre a venda..." placeholderTextColor="#a8a29e" value={form.observation} onChangeText={v => update('observation', v)} />
@@ -329,9 +404,23 @@ export default function NovaVendaScreen() {
             <Choice label="Não" selected={!form.hasDeliveryDeadline} onPress={() => setForm(old => ({ ...old, hasDeliveryDeadline: false, deliveryDeadline: '' }))} />
             <Choice label="Sim" selected={form.hasDeliveryDeadline} onPress={() => update('hasDeliveryDeadline', true)} />
           </View>
-          {form.hasDeliveryDeadline && <><Label>Data de entrega * (AAAA-MM-DD)</Label>
-            <TextInput style={styles.input} keyboardType="numbers-and-punctuation" placeholder="2026-12-31" placeholderTextColor="#a8a29e"
-              maxLength={10} value={form.deliveryDeadline} onChangeText={v => update('deliveryDeadline', v)} />
+          {form.hasDeliveryDeadline && <>
+            <Label>Data de entrega</Label>
+            <View style={styles.dateRow}>
+              <TextInput
+                style={[styles.input, styles.dateInput]}
+                keyboardType="number-pad"
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#a8a29e"
+                maxLength={10}
+                value={form.deliveryDeadline}
+                onChangeText={value => update('deliveryDeadline', formatBrazilianDate(value))}
+                accessibilityLabel="Data de entrega no formato dia, mês e ano"
+              />
+              <Pressable style={styles.calendarButton} onPress={openCalendar} accessibilityLabel="Selecionar data no calendário">
+                <Ionicons name="calendar-outline" size={23} color={C.gold} />
+              </Pressable>
+            </View>
           </>}
         </View>
         <View style={styles.card}>
@@ -350,15 +439,52 @@ export default function NovaVendaScreen() {
           </View>
         </View>
         <View style={styles.footerButtons}>
-          <Pressable onPress={() => router.replace('/vendas')} style={styles.cancelButton}><SafeText style={styles.cancelText}>Cancelar</SafeText></Pressable>
+          <Pressable onPress={() => router.replace('/vendas')} style={styles.cancelButton}><SafeText style={styles.cancelText} allowFontScaling={false}>Cancelar{'\u00A0\u00A0'}</SafeText></Pressable>
           <Pressable disabled={saving || loading} onPress={() => void save()} style={[styles.primaryButton, (saving || loading) && styles.disabled]}>
             {saving ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="save-outline" color="#fff" size={19} />}
-            <SafeText style={styles.primaryText}>{saving ? 'Salvando...' : 'Registrar venda'}</SafeText>
+            <SafeText style={[styles.primaryText, styles.footerRegisterText]} allowFontScaling={false}>{saving ? 'Salvando...' : 'Registrar venda'}{'\u00A0\u00A0'}</SafeText>
           </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
 
+    <Modal visible={calendarOpen} transparent animationType="fade" onRequestClose={() => setCalendarOpen(false)}>
+      <View style={styles.calendarBackdrop}>
+        <View style={styles.calendarPanel}>
+          <View style={styles.calendarHeader}>
+            <Pressable onPress={() => shiftMonth(-1)} accessibilityLabel="Mês anterior" style={styles.calendarNav}>
+              <Ionicons name="chevron-back" size={23} color={C.gold} />
+            </Pressable>
+            <Text style={styles.calendarHeading}>{MONTH_NAMES[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}</Text>
+            <Pressable onPress={() => shiftMonth(1)} accessibilityLabel="Próximo mês" style={styles.calendarNav}>
+              <Ionicons name="chevron-forward" size={23} color={C.gold} />
+            </Pressable>
+          </View>
+          <View style={styles.calendarGrid}>
+            {WEEKDAYS.map((weekday, index) => (
+              <View key={`weekday-${index}`} style={styles.calendarCell}>
+                <Text style={styles.calendarWeekday}>{weekday}</Text>
+              </View>
+            ))}
+            {calendarDays.map((day, index) => {
+              const candidate = day ? new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day) : null;
+              const selected = candidate ? dateToBrazilian(candidate) === form.deliveryDeadline : false;
+              return <View key={`day-${index}`} style={styles.calendarCell}>
+                {candidate && <Pressable
+                  style={[styles.calendarDay, selected && styles.calendarDaySelected]}
+                  onPress={() => { update('deliveryDeadline', dateToBrazilian(candidate)); setCalendarOpen(false); }}
+                  accessibilityLabel={`Selecionar ${dateToBrazilian(candidate)}`}>
+                  <Text style={[styles.calendarDayText, selected && styles.calendarDayTextSelected]}>{day}</Text>
+                </Pressable>}
+              </View>;
+            })}
+          </View>
+          <Pressable style={styles.calendarClose} onPress={() => setCalendarOpen(false)}>
+            <Text style={styles.calendarCloseText}>Fechar</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
     <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
       <View style={styles.modalBackdrop}><View style={styles.modalSheet}>
         <View style={styles.modalHeading}><SafeText style={styles.modalTitle}>{picker?.title}</SafeText>
@@ -386,18 +512,38 @@ const styles = StyleSheet.create({
   page: { padding: 16, paddingBottom: 45, gap: 15 },
   topbar: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 4 },
   backButton: { width: 43, height: 43, borderRadius: 11, backgroundColor: '#fff', borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, fontSize: 24, lineHeight: 35, color: C.text, fontWeight: '700' },
-  registerTop: { backgroundColor: C.gold, borderRadius: 11, paddingHorizontal: 11, minHeight: 43, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  pageTitle: { flex: 1, minWidth: 0, fontSize: 20, lineHeight: 35, color: C.text, fontWeight: '700' },
+  registerTop: { backgroundColor: C.gold, borderRadius: 11, width: 145, minHeight: 48, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  registerTopText: { flexShrink: 0, textAlign: 'center', fontSize: 12, paddingRight: 0 },
   loading: { padding: 18, gap: 9, alignItems: 'center' },
   muted: { fontSize: 13, lineHeight: 21, color: C.muted },
   card: { padding: 17, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 17, gap: 4 },
-  productsSection: { padding: 16, backgroundColor: '#f8f2e8', borderWidth: 1, borderColor: '#d9c4a4', borderRadius: 17, gap: 12 },
+  productsSection: {
+  padding: 16,
+  backgroundColor: '#f8f2e8',
+  borderWidth: 1,
+  borderColor: '#d9c4a4',
+  borderRadius: 17,
+  gap: 5,
+},
   sectionHeading: { color: C.text, fontSize: 18, fontWeight: '700', lineHeight: 29, marginBottom: 11 },
-  field: { marginBottom: 13 }, label: { color: C.text, fontSize: 13, fontWeight: '600', lineHeight: 23, marginBottom: 7 },
+  field: { marginBottom: 13 }, label: { color: C.text, fontSize: 13, fontWeight: '600', lineHeight: 21, marginBottom: 3 },
   selector: { borderWidth: 1, borderColor: C.border, borderRadius: 11, minHeight: 49, paddingVertical: 11, paddingHorizontal: 13, backgroundColor: C.white, flexDirection: 'row', alignItems: 'center', gap: 8 },
   selectorText: { flex: 1, color: C.text, fontSize: 14, lineHeight: 23 },
   placeholder: { color: '#a8a29e' },
-  input: { borderWidth: 1, borderColor: C.border, borderRadius: 11, backgroundColor: C.white, minHeight: 49, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14, color: C.text, marginBottom: 13, includeFontPadding: true },
+  input: {
+  borderWidth: 1,
+  borderColor: C.border,
+  borderRadius: 11,
+  backgroundColor: C.white,
+  minHeight: 49,
+  paddingHorizontal: 13,
+  paddingVertical: 11,
+  fontSize: 14,
+  color: C.text,
+  marginBottom: 5,
+  includeFontPadding: true,
+},
   textArea: { minHeight: 95 },
   itemCard: { backgroundColor: C.white, borderRadius: 13, borderWidth: 1, borderColor: '#e8ddcb', padding: 15, marginBottom: 4 },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
@@ -412,13 +558,22 @@ const styles = StyleSheet.create({
   accordionHeader: { marginTop: 13, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 9 },
   accordionTitle: { flex: 1, color: '#927448', fontSize: 13, lineHeight: 24, fontWeight: '700' },
   accordionContent: { paddingTop: 15 }, choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 12 },
-  choice: { borderWidth: 1, borderColor: C.border, borderRadius: 10, backgroundColor: C.white, minHeight: 43, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  choice: { borderWidth: 1, borderColor: C.border, borderRadius: 10, backgroundColor: C.white, minHeight: 48, minWidth: 112, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
   choiceSelected: { borderColor: C.gold, backgroundColor: '#f4ede2' },
   choiceDanger: { backgroundColor: '#fee2e2', borderColor: '#ef4444' },
-  choiceText: { fontSize: 13, lineHeight: 21, color: C.muted, fontWeight: '600' },
+  choiceText: { fontSize: 13, lineHeight: 23, color: C.muted, fontWeight: '600', includeFontPadding: true },
+  booleanChoiceText: { textAlign: 'center', minWidth: 62, paddingRight: 0 },
   choiceTextSelected: { color: C.text, fontWeight: '700' },
-  addProduct: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.gold, borderRadius: 11, padding: 12, minHeight: 47 },
-  primaryText: { color: C.white, fontWeight: '700', fontSize: 13, lineHeight: 22 },
+  addProduct: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.gold, borderRadius: 11, paddingHorizontal: 10, paddingVertical: 10, minHeight: 49 },
+  addProductText: {
+  color: '#fff',
+  fontSize: 13,
+  fontWeight: '700',
+  textAlign: 'center',
+  includeFontPadding: true,
+},
+  primaryText: { color: C.white, fontWeight: '700', fontSize: 13, lineHeight: 24, includeFontPadding: true },
+  footerRegisterText: { flexShrink: 1, textAlign: 'center', fontSize: 12, paddingRight: 0 },
   divider: { height: 1, backgroundColor: '#e2cfb3', marginVertical: 8 },
   totalBanner: { borderWidth: 1, borderColor: '#e2cfb3', backgroundColor: '#efe2cd', borderRadius: 11, padding: 16, gap: 5, marginTop: 9 },
   totalLabel: { fontSize: 14, fontWeight: '600', lineHeight: 23, color: C.text },
@@ -427,10 +582,27 @@ const styles = StyleSheet.create({
   summaryCell: { width: '50%', paddingHorizontal: 5, minWidth: 0 },
   summaryValue: { color: C.text, fontSize: 15, lineHeight: 25, fontWeight: '700' },
   footerButtons: { flexDirection: 'row', gap: 11 },
-  cancelButton: { minHeight: 49, paddingHorizontal: 16, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
-  cancelText: { color: C.text, fontSize: 13, fontWeight: '700', lineHeight: 22 },
-  primaryButton: { flex: 1, minHeight: 49, backgroundColor: C.gold, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10 },
+  cancelButton: { minWidth: 146, minHeight: 49, paddingHorizontal: 12, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: C.white, justifyContent: 'center', alignItems: 'center' },
+  cancelText: { textAlign: 'center', color: C.text, fontSize: 13, fontWeight: '700', lineHeight: 24, includeFontPadding: true },
+  primaryButton: { flex: 1, minWidth: 0, minHeight: 49, backgroundColor: C.gold, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5 },
   disabled: { opacity: 0.4 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
+  dateInput: { flex: 1, minWidth: 0, marginBottom: 0 },
+  calendarButton: { width: 52, height: 49, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  calendarPanel: { width: '100%', maxWidth: 380, backgroundColor: C.white, borderRadius: 17, padding: 15 },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
+  calendarHeading: { fontSize: 16, lineHeight: 25, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
+  calendarNav: { padding: 9 },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.285714%', height: 43, justifyContent: 'center', alignItems: 'center' },
+  calendarWeekday: { color: C.muted, fontWeight: '700', fontSize: 12 },
+  calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarDaySelected: { backgroundColor: C.gold },
+  calendarDayText: { color: C.text, fontSize: 14, fontWeight: '600' },
+  calendarDayTextSelected: { color: C.white },
+  calendarClose: { alignSelf: 'flex-end', padding: 12, marginTop: 12 },
+  calendarCloseText: { color: C.gold, fontWeight: '700', fontSize: 14 },
   modalBackdrop: { flex: 1, backgroundColor: '#0009', justifyContent: 'flex-end' },
   modalSheet: { height: '80%', backgroundColor: C.bg, borderTopLeftRadius: 23, borderTopRightRadius: 23, paddingTop: 15, overflow: 'hidden' },
   modalHeading: { flexDirection: 'row', paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', justifyContent: 'space-between', gap: 12 },

@@ -4,10 +4,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet,
-    Text, View,
+  ActivityIndicator,
+  Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet,
+  Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
@@ -244,7 +244,7 @@ export default function SaleDetailsScreen() {
 
   return <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
     <View style={styles.topBar}>
-      <Pressable style={styles.backIcon} onPress={navigateBack} accessibilityLabel="Voltar para vendas">
+      <Pressable style={styles.backIcon} onPress={navigateBack} accessibilityLabel="Voltar">
         <Ionicons name="arrow-back" size={23} color={C.dark} />
       </Pressable>
       <SafeText style={styles.topTitle}>Detalhes da venda</SafeText>
@@ -261,11 +261,11 @@ export default function SaleDetailsScreen() {
       </View> : error || !sale ? <View style={styles.feedback}>
         <Ionicons name="receipt-outline" size={42} color={C.gold} />
         <SafeText style={styles.error}>{error ?? 'Venda não encontrada.'}</SafeText>
-        <Pressable style={styles.primaryButton} onPress={navigateBack}><SafeText style={styles.primaryText}>Voltar para vendas</SafeText></Pressable>
+        <Pressable style={styles.primaryButton} onPress={navigateBack}><SafeText style={styles.primaryText}>Voltar</SafeText></Pressable>
       </View> : <>
         <View style={styles.toolbar}>
-          <Pressable onPress={navigateBack} style={styles.backLink}><Ionicons name="arrow-back" size={16} color="#927448" /><SafeText style={styles.linkText}>Voltar para vendas</SafeText></Pressable>
-          <Pressable onPress={navigateEdit} style={styles.primaryButton}><Ionicons name="pencil-outline" size={17} color="#fff" /><SafeText style={styles.primaryText}>Atualizar</SafeText></Pressable>
+          <Pressable onPress={navigateBack} style={styles.backLink}><Ionicons name="arrow-back" size={16} color="#927448" /><Text style={styles.linkText}>Voltar{'\u00A0\u00A0'}</Text></Pressable>
+          <Pressable onPress={navigateEdit} style={styles.primaryButton}><Ionicons name="pencil-outline" size={17} color="#fff" /><Text style={styles.primaryText}>Atualizar{'\u00A0\u00A0'}</Text></Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -275,7 +275,7 @@ export default function SaleDetailsScreen() {
           <View style={[styles.badge,
             sale.paymentStatus === 'PAID' ? styles.badgePaid :
             sale.paymentStatus === 'UNPAID' ? styles.badgeUnpaid : styles.badgePartial]}>
-            <SafeText style={styles.badgeText}>{PAYMENT_STATUSES[sale.paymentStatus] ?? sale.paymentStatus}</SafeText>
+            <Text style={styles.badgeText}>{PAYMENT_STATUSES[sale.paymentStatus] ?? sale.paymentStatus}{'\u00A0\u00A0\u00A0'}</Text>
           </View>
           <View style={styles.heroDivider} />
           <SafeText style={styles.fieldLabel}>VALOR TOTAL</SafeText>
@@ -316,21 +316,21 @@ export default function SaleDetailsScreen() {
             ].filter(entry => Boolean(entry.value));
             return <View key={item.id ?? `${item.productId}-${index}`} style={[styles.productCard, index % 2 !== 0 && styles.productAlternate]}>
               <Pressable onPress={() => router.push(`/produtos/${item.productId}` as never)} style={styles.productLink}>
-                <SafeText style={styles.productName}>{product?.name ?? `Produto ${index + 1}`}</SafeText>
-                {product?.code ? <SafeText style={styles.productCode}>{product.code}</SafeText> : null}
+                <Text style={styles.productName}>{product?.name ?? `Produto ${index + 1}`}{'\u00A0'}</Text>
+                {product?.code ? <Text style={styles.productCode}>{product.code}{'\u00A0\u00A0'}</Text> : null}
                 <Ionicons name="open-outline" size={16} color={C.gold} />
               </Pressable>
               <View style={styles.productSummary}>
-                <View style={styles.smallPill}><SafeText style={styles.pillText}>{item.quantity} un.</SafeText></View>
-                {item.totalPrice != null ? <View style={styles.smallPill}><SafeText style={styles.pillText}>{currency(item.totalPrice)}</SafeText></View> : null}
+                <View style={styles.smallPill}><Text style={styles.pillText}>{item.quantity} un.{'\u00A0\u00A0'}</Text></View>
+                {item.totalPrice != null ? <View style={styles.smallPill}><Text style={styles.pillText}>{currency(item.totalPrice)}{'\u00A0\u00A0'}</Text></View> : null}
               </View>
               {characteristics.length ? <View style={styles.characteristics}>
                 {characteristics.map(entry => {
                   const background = entry.label === 'Cor' && entry.value ? getColor(entry.value) : undefined;
                   return <View key={entry.label} style={styles.characteristic}>
-                    <SafeText style={styles.fieldLabel}>{entry.label}</SafeText>
+                    <Text style={styles.fieldLabel}>{entry.label}</Text>
                     {entry.label === 'Cor' ? <View style={[styles.colorPill, { backgroundColor: background ?? '#f5f2e9' }]}>
-                      <SafeText style={[styles.colorText, { color: contrastingColor(entry.value ?? '', background) }]}>{entry.value}</SafeText>
+                      <Text style={[styles.colorText, { color: contrastingColor(entry.value ?? '', background) }]}>{entry.value}{'\u00A0\u00A0\u00A0'}</Text>
                     </View> : <SafeText style={styles.fieldValue}>{entry.value}</SafeText>}
                   </View>;
                 })}
@@ -339,21 +339,61 @@ export default function SaleDetailsScreen() {
           })}
         </Section>
 
-        <Section title="Histórico de movimentações" icon="receipt-outline">
-          {movementsError ? <SafeText style={styles.muted}>Não foi possível carregar o histórico.</SafeText> :
-            movements.length === 0 ? <SafeText style={styles.muted}>Nenhuma movimentação encontrada.</SafeText> :
-              movements.map(movement => <View key={movement.id} style={styles.movementCard}>
-                <View style={styles.movementHead}>
-                  <SafeText style={styles.movementId}>{movement.originCode?.toUpperCase() ?? '—'}</SafeText>
-                  <SafeText style={[styles.movementAmount,
-                    { color: movement.direction === 'OUT' ? '#b91c1c' : movement.direction === 'IN' ? '#047857' : C.dark }]}>
-                    {movement.direction === 'OUT' ? '− ' : movement.direction === 'IN' ? '+ ' : ''}{currency(movement.amount)}
-                  </SafeText>
-                </View>
-                <SafeText style={styles.fieldValue}>{MOVEMENT_LABELS[movement.operation] ?? movement.operation}</SafeText>
-                <SafeText style={styles.muted}>{dateTime(movement.createdAt)}</SafeText>
-              </View>)}
-        </Section>
+        
+<Section title="Histórico de movimentações" icon="receipt-outline">
+  {movementsError ? (
+    <SafeText style={styles.muted}>
+      Não foi possível carregar o histórico.
+    </SafeText>
+  ) : movements.length === 0 ? (
+    <SafeText style={styles.muted}>
+      Nenhuma movimentação encontrada.
+    </SafeText>
+  ) : (
+    movements.map(movement => (
+      <View key={movement.id} style={styles.movementCard}>
+        <View style={styles.movementHead}>
+          <Text style={styles.movementId}>
+            {movement.originCode?.toUpperCase() ?? '—'}{'\u00A0'}
+          </Text>
+
+          <Text style={styles.movementType}>
+            {MOVEMENT_LABELS[movement.operation] ?? movement.operation}
+            {'\u00A0\u00A0\u00A0\u00A0'}
+          </Text>
+        </View>
+
+        <Text style={styles.movementAmountLabel}>
+          Valor
+        </Text>
+
+        <View style={styles.movementValueRow}>
+          <Text
+            style={[
+              styles.movementAmount,
+              {
+                color:
+                  movement.direction === 'OUT'
+                    ? '#b91c1c'
+                    : movement.direction === 'IN'
+                      ? '#047857'
+                      : C.dark,
+              },
+            ]}
+          >
+            {movement.direction === 'OUT' ? '− ' : movement.direction === 'IN' ? '+ ' : ''}
+            {currency(movement.amount)}{'\u00A0\u00A0'}
+          </Text>
+        </View>
+
+        <SafeText style={styles.muted}>
+          {dateTime(movement.createdAt)}
+        </SafeText>
+      </View>
+    ))
+  )}
+</Section>
+
 
         {sale.observation?.trim() ? <Section title="Observações" icon="document-text-outline">
           <SafeText style={styles.observation}>{sale.observation.trim()}</SafeText>
@@ -373,22 +413,28 @@ const styles = StyleSheet.create({
   feedback: { minHeight: 310, justifyContent: 'center', alignItems: 'center', gap: 15, padding: 20 },
   toolbar: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   backLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12 },
-  linkText: { color: '#927448', fontSize: 13, lineHeight: 22, fontWeight: '600' },
-  primaryButton: { minHeight: 45, paddingHorizontal: 17, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 11, backgroundColor: C.gold },
-  primaryText: { fontSize: 13, lineHeight: 23, color: '#fff', fontWeight: '700' },
+  linkText: { color: '#927448', fontSize: 13, lineHeight: 24, fontWeight: '600', includeFontPadding: true, minWidth: 80 },
+  primaryButton: { minHeight: 48, minWidth: 145, paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 11, backgroundColor: C.gold },
+  primaryText: { fontSize: 13, lineHeight: 24, color: '#fff', fontWeight: '700', includeFontPadding: true },
   hero: { borderRadius: 17, borderWidth: 1, borderColor: '#e8dfd2', backgroundColor: C.cream, padding: 19, gap: 8 },
   heroName: { fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 25, lineHeight: 36, color: C.dark, fontWeight: '600' },
   heroAmount: { color: C.dark, fontSize: 28, lineHeight: 42, fontWeight: '700' },
   heroDivider: { marginTop: 10, marginBottom: 5, height: 1, backgroundColor: '#e4d8c7' },
-  badge: { alignSelf: 'flex-start', borderRadius: 15, paddingHorizontal: 13, paddingVertical: 8, marginTop: 7 },
+  badge: { alignSelf: 'flex-start', borderRadius: 15, paddingHorizontal: 18, paddingVertical: 9, marginTop: 7, minWidth: 110 },
   badgePaid: { backgroundColor: '#dcfce7' }, badgeUnpaid: { backgroundColor: '#fee2e2' }, badgePartial: { backgroundColor: '#fef3c7' },
-  badgeText: { color: C.dark, fontSize: 12, lineHeight: 21, fontWeight: '700' },
+  badgeText: { color: C.dark, fontSize: 12, lineHeight: 23, fontWeight: '700', includeFontPadding: true },
   section: { borderWidth: 1, borderColor: C.border, backgroundColor: '#fff', borderRadius: 17, padding: 17, gap: 14 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 11, borderBottomWidth: 1, borderBottomColor: '#f0ebe5', paddingBottom: 14, marginBottom: 2 },
   sectionIcon: { width: 39, height: 39, borderRadius: 11, backgroundColor: '#f5efe6', alignItems: 'center', justifyContent: 'center' },
   sectionTitle: { flex: 1, fontSize: 17, lineHeight: 28, fontWeight: '700', color: C.dark },
   field: { gap: 5 }, fieldLabel: { fontSize: 11, lineHeight: 19, fontWeight: '600', letterSpacing: 0.25, textTransform: 'uppercase', color: '#94887b' },
-  fieldValue: { fontSize: 14, lineHeight: 23, fontWeight: '600', color: C.dark },
+  fieldValue: {
+  fontSize: 14,
+  lineHeight: 23,
+  fontWeight: '600',
+  color: C.dark,
+  paddingRight: 16,
+},
   muted: { fontSize: 12, lineHeight: 21, color: C.muted },
   error: { fontSize: 14, lineHeight: 23, color: '#b91c1c', textAlign: 'center' },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -398,19 +444,22 @@ const styles = StyleSheet.create({
   progressText: { textAlign: 'right', fontSize: 12, lineHeight: 21, color: C.muted },
   productCard: { padding: 14, borderWidth: 1, borderColor: C.border, borderRadius: 12, backgroundColor: '#fff', gap: 13 },
   productAlternate: { backgroundColor: '#e9e4dc' },
-  productLink: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  productName: { color: C.dark, fontSize: 15, lineHeight: 25, fontWeight: '700' },
-  productCode: { color: C.gold, fontSize: 13, lineHeight: 23, fontWeight: '700' },
+  productLink: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, paddingRight: 8 },
+  productName: { color: C.dark, fontSize: 14, lineHeight: 26, fontWeight: '700', includeFontPadding: true, maxWidth: '100%' },
+  productCode: { color: C.gold, fontSize: 12, lineHeight: 24, fontWeight: '700', includeFontPadding: true, minWidth: 52 },
   productSummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  smallPill: { backgroundColor: C.cream, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 11 },
-  pillText: { fontSize: 13, lineHeight: 22, fontWeight: '700', color: C.dark },
+  smallPill: { backgroundColor: C.cream, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 13, alignSelf: 'flex-start' },
+  pillText: { fontSize: 12, lineHeight: 23, fontWeight: '700', color: C.dark, includeFontPadding: true },
   characteristics: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 13, gap: 12 },
-  characteristic: { gap: 6, alignItems: 'flex-start' },
-  colorPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e8e0d4', alignSelf: 'flex-start' },
-  colorText: { fontSize: 13, lineHeight: 22, fontWeight: '600' },
-  movementCard: { padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 10, gap: 5 },
-  movementHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 9 },
+  characteristic: { gap: 7, alignItems: 'flex-start', width: '100%', minWidth: 0 },
+  colorPill: { minWidth: 105, maxWidth: '100%', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e8e0d4', alignSelf: 'flex-start', alignItems: 'flex-start' },
+  colorText: { fontSize: 13, lineHeight: 24, fontWeight: '600', includeFontPadding: true },
+  movementCard: { padding: 14, borderWidth: 1, borderColor: C.border, borderRadius: 10, gap: 8 },
+  movementHead: { gap: 5, alignItems: 'flex-start' },
+  movementType: { fontSize: 14, lineHeight: 24, color: C.dark, fontWeight: '600', includeFontPadding: true },
+  movementAmountLabel: { fontSize: 11, lineHeight: 19, color: C.muted, fontWeight: '600' },
+  movementValueRow: { width: '100%', minHeight: 30, alignItems: 'flex-start' },
   movementId: { fontSize: 13, lineHeight: 23, fontWeight: '700', color: C.dark },
-  movementAmount: { fontSize: 14, lineHeight: 24, fontWeight: '700' },
+  movementAmount: { fontSize: 16, lineHeight: 29, fontWeight: '700', includeFontPadding: true, minWidth: 155 },
   observation: { color: C.text, fontSize: 14, lineHeight: 25 },
 });
