@@ -280,7 +280,6 @@ export default function EstoqueScreen() {
               <Ionicons name="refresh-outline" size={21} color={C.gold} />
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>Consulte materiais, insumos e quantidades disponíveis.</Text>
           <View style={styles.newRow}>
             <Button label="Cadastrar item" icon="add-outline" onPress={() => router.push('/estoque/novo' as never)} />
           </View>

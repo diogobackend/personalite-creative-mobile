@@ -87,6 +87,10 @@ function previousPeriod(period: Period): Period {
   return { startDate: toYmd(previousStart), endDate: toYmd(previousEnd) };
 }
 const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && toYmd(dateFromString(value)) === value;
+const maskBrazilianDate = (value: string) => { const digits = value.replace(/\D/g, '').slice(0, 8); return digits.length <= 2 ? digits : digits.length <= 4 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`; };
+const brazilianToIso = (value: string) => { if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return ''; const [d, m, y] = value.split('/'); const iso = `${y}-${m}-${d}`; return validDate(iso) ? iso : ''; };
+const CALENDAR_MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const CALENDAR_WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 function Metric({ title, value, description, icon, format = 'currency', positive = false, loading = false }: {
   title: string; value: number | null | undefined; description: string; icon: IconName; format?: Format; positive?: boolean; loading?: boolean;
@@ -113,6 +117,15 @@ function Progress({ title, value, color, loading }: { title: string; value: numb
 export default function RelatoriosScreen() {
   const [preset, setPreset] = useState<Preset>('currentMonth');
   const [period, setPeriod] = useState<Period>(() => periodFor('currentMonth'));
+  const [startDateText, setStartDateText] = useState(() => displayDate(periodFor('currentMonth').startDate));
+  const [endDateText, setEndDateText] = useState(() => displayDate(periodFor('currentMonth').endDate));
+  const [calendarTarget, setCalendarTarget] = useState<keyof Period | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear(); const month = calendarMonth.getMonth();
+    const offset = new Date(year, month, 1).getDay();
+    return [...Array.from({ length: offset }, () => null), ...Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => index + 1)];
+  }, [calendarMonth]);
   const [reports, setReports] = useState<Reports>(EMPTY);
   const [failed, setFailed] = useState<ReportKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +183,34 @@ export default function RelatoriosScreen() {
     }
   };
   const refresh = () => { if (loading || !valid) return; setRefreshing(true); setReload(v => v + 1); };
-  const choosePreset = (next: Preset) => { setPreset(next); if (next !== 'custom') setPeriod(periodFor(next)); };
+  const choosePreset = (next: Preset) => {
+    setPreset(next);
+    if (next !== 'custom') {
+      const selected = periodFor(next);
+      setPeriod(selected);
+      setStartDateText(displayDate(selected.startDate));
+      setEndDateText(displayDate(selected.endDate));
+    }
+  };
+  const changeCustomDate = (field: keyof Period, text: string) => {
+    const masked = maskBrazilianDate(text);
+    if (field === 'startDate') setStartDateText(masked); else setEndDateText(masked);
+    setPeriod(current => ({ ...current, [field]: brazilianToIso(masked) }));
+  };
+  const openCalendar = (field: keyof Period) => {
+    const value = period[field];
+    const selected = validDate(value) ? dateFromString(value) : new Date();
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setCalendarTarget(field);
+  };
+  const selectCalendarDate = (day: number) => {
+    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+    const iso = toYmd(date);
+    if (calendarTarget === 'startDate') setStartDateText(displayDate(iso));
+    else if (calendarTarget === 'endDate') setEndDateText(displayDate(iso));
+    if (calendarTarget) setPeriod(current => ({ ...current, [calendarTarget]: iso }));
+    setCalendarTarget(null);
+  };
   const navigate = (route?: string, label?: string) => {
     setMenuOpen(false);
     if (!route) { Alert.alert(label ?? 'Página', 'Esta seção ainda não foi implementada no aplicativo mobile.'); return; }
@@ -192,24 +232,23 @@ export default function RelatoriosScreen() {
         <Text style={s.topbarTitle}>Relatórios</Text>
         <Pressable style={s.iconButton} onPress={refresh} accessibilityLabel="Atualizar"><Ionicons name="refresh-outline" size={21} color={C.gold}/></Pressable>
       </View>
-      <Text style={s.eyebrow}>Gestão financeira</Text>
-      <Text style={s.heading}>Relatórios</Text>
-      <Text style={s.intro}>Entenda quanto o negócio vendeu, recebeu, gastou e teve de resultado.</Text>
-      <Pressable style={s.backButton} onPress={() => navigate('/home')}><Ionicons name="arrow-back-outline" size={17} color={C.gold}/><Text style={s.backText}>Visão geral</Text></Pressable>
-
       <Panel>
-        <View style={s.panelHeading}><Ionicons name="calendar-outline" size={22} color={C.gold}/><Text style={s.panelTitle}>Período de análise</Text></View>
-        <Text style={s.muted}>Escolha as datas dos relatórios.</Text>
-        <View style={s.chips}>{PRESETS.map(item => <Pressable key={item.value} onPress={() => choosePreset(item.value)} style={[s.chip, preset === item.value && s.chipActive]}><Text style={[s.chipText, preset === item.value && s.chipTextActive]}>{item.label}</Text></Pressable>)}</View>
+        <View style={s.chips}>{PRESETS.map(item => <Pressable key={item.value} onPress={() => choosePreset(item.value)} style={[s.chip, preset === item.value && s.chipActive]}><Text allowFontScaling={false} style={[s.chipText, { minWidth: Math.ceil(item.label.length * 8.5) + 10 }, preset === item.value && s.chipTextActive]}>{item.label}</Text></Pressable>)}</View>
         {preset === 'custom' && <View style={s.customPeriod}>
-          <Text style={s.fieldLabel}>Data inicial (AAAA-MM-DD)</Text>
-          <TextInput style={s.input} placeholder="2026-11-01" value={period.startDate} onChangeText={value => setPeriod(old => ({ ...old, startDate: value }))} keyboardType="numbers-and-punctuation" maxLength={10}/>
-          <Text style={s.fieldLabel}>Data final (AAAA-MM-DD)</Text>
-          <TextInput style={s.input} placeholder="2026-11-30" value={period.endDate} onChangeText={value => setPeriod(old => ({ ...old, endDate: value }))} keyboardType="numbers-and-punctuation" maxLength={10}/>
+          <Text style={s.fieldLabel}>Data inicial</Text>
+          <View style={s.dateRow}>
+            <TextInput style={[s.input, s.dateInput]} placeholder="DD/MM/AAAA" placeholderTextColor="#a8a29e" value={startDateText} onChangeText={text => changeCustomDate('startDate', text)} keyboardType="number-pad" maxLength={10}/>
+            <Pressable style={s.calendarButton} onPress={() => openCalendar('startDate')} accessibilityLabel="Selecionar data inicial no calendário"><Ionicons name="calendar-outline" size={23} color={C.gold}/></Pressable>
+          </View>
+          <Text style={s.fieldLabel}>Data final</Text>
+          <View style={s.dateRow}>
+            <TextInput style={[s.input, s.dateInput]} placeholder="DD/MM/AAAA" placeholderTextColor="#a8a29e" value={endDateText} onChangeText={text => changeCustomDate('endDate', text)} keyboardType="number-pad" maxLength={10}/>
+            <Pressable style={s.calendarButton} onPress={() => openCalendar('endDate')} accessibilityLabel="Selecionar data final no calendário"><Ionicons name="calendar-outline" size={23} color={C.gold}/></Pressable>
+          </View>
         </View>}
         {valid ? <Text style={s.periodLabel}><Ionicons name="time-outline" size={15} color={C.gold}/> {displayDate(period.startDate)} até {displayDate(period.endDate)}</Text>
           : <Text style={s.error}>Informe datas válidas. A data inicial não pode ser posterior à final.</Text>}
-        <Pressable style={[s.outlineButton, (loading || !valid) && s.disabled]} disabled={loading || !valid} onPress={refresh}><Ionicons name="refresh-outline" size={17} color={C.gold}/><Text style={s.outlineText}>Atualizar</Text></Pressable>
+        <Pressable style={[s.outlineButton, (loading || !valid) && s.disabled]} disabled={loading || !valid} onPress={refresh}><Ionicons name="refresh-outline" size={17} color={C.gold}/><Text allowFontScaling={false} style={s.outlineText}>Atualizar</Text></Pressable>
       </Panel>
 
       <Panel>
@@ -324,9 +363,29 @@ export default function RelatoriosScreen() {
         <Panel><Text style={s.panelTitle}>Lucro líquido previsto</Text><Text style={[s.bigValue, { color: (reports.overview?.expectedProfit ?? 0) < 0 ? C.red : C.green }]}>{loading ? 'Carregando...' : formatValue(reports.overview?.expectedProfit)}</Text><Text style={s.muted}>Faturamento total menos todas as despesas previstas.</Text></Panel>
         <Panel><Text style={s.panelTitle}>Lucro líquido realizado</Text><Text style={[s.bigValue, { color: (reports.overview?.realizedProfit ?? 0) < 0 ? C.red : C.green }]}>{loading ? 'Carregando...' : formatValue(reports.overview?.realizedProfit)}</Text><Text style={s.muted}>Valores recebidos das vendas menos despesas já pagas.</Text></Panel>
       </Section>
-      <Pressable style={s.backButton} onPress={() => navigate('/home')}><Text style={s.backText}>Voltar ao início</Text><Ionicons name="arrow-forward-outline" size={17} color={C.gold}/></Pressable>
+      <Pressable style={s.backButton} onPress={() => navigate('/home')}><Text allowFontScaling={false} style={s.backText}>Voltar ao início</Text><Ionicons name="arrow-forward-outline" size={17} color={C.gold}/></Pressable>
       <Text style={s.footer}>Personalité Creative · Sistema de gestão</Text>
     </ScrollView>
+
+    <Modal visible={calendarTarget !== null} transparent animationType="fade" onRequestClose={() => setCalendarTarget(null)}>
+      <View style={s.calendarBackdrop}>
+        <View style={s.calendarPanel}>
+          <View style={s.calendarHeader}>
+            <Pressable style={s.calendarNav} onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))} accessibilityLabel="Mês anterior"><Ionicons name="chevron-back" size={23} color={C.gold}/></Pressable>
+            <Text allowFontScaling={false} style={s.calendarHeading}>{CALENDAR_MONTHS[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}</Text>
+            <Pressable style={s.calendarNav} onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))} accessibilityLabel="Próximo mês"><Ionicons name="chevron-forward" size={23} color={C.gold}/></Pressable>
+          </View>
+          <View style={s.calendarGrid}>
+            {CALENDAR_WEEKDAYS.map((weekday, index) => <View key={`weekday-${index}`} style={s.calendarCell}><Text style={s.calendarWeekday}>{weekday}</Text></View>)}
+            {calendarDays.map((day, index) => {
+              const selected = day !== null && calendarTarget !== null && toYmd(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)) === period[calendarTarget];
+              return <View key={`day-${index}`} style={s.calendarCell}>{day !== null && <Pressable style={[s.calendarDay, selected && s.calendarDaySelected]} onPress={() => selectCalendarDate(day)} accessibilityLabel={`Selecionar dia ${day}`}><Text allowFontScaling={false} style={[s.calendarDayText, selected && s.calendarDayTextSelected]}>{day}</Text></Pressable>}</View>;
+            })}
+          </View>
+          <Pressable style={s.calendarClose} onPress={() => setCalendarTarget(null)}><Text allowFontScaling={false} style={s.calendarCloseText}>Fechar</Text></Pressable>
+        </View>
+      </View>
+    </Modal>
 
     <Modal visible={exportDialog !== null} transparent animationType="fade" onRequestClose={() => setExportDialog(null)}>
       <View style={s.exportOverlay}>
@@ -350,10 +409,10 @@ export default function RelatoriosScreen() {
             <Pressable onPress={() => setMenuOpen(false)}><Ionicons name="close" size={24} color="#fff"/></Pressable></View>
           <ScrollView style={s.drawerScroll} contentContainerStyle={s.drawerContent}><Text style={s.drawerSection}>MENU PRINCIPAL</Text>
             {MENU.map(item => <Pressable key={item.label} onPress={() => navigate(item.route, item.label)} style={[s.drawerItem, item.route === '/relatorios' && s.drawerActive]}>
-              <Ionicons name={item.icon} size={20} color="#eee7db"/><Text style={s.drawerItemText}>{item.label}</Text></Pressable>)}
-            <Text style={s.drawerSection}>SISTEMA</Text><Pressable style={s.drawerItem} onPress={() => navigate('/perfil', 'Meu Perfil')}><Ionicons name="settings-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Meu Perfil</Text></Pressable>
+              <Ionicons name={item.icon} size={20} color="#eee7db"/><Text allowFontScaling={false} style={s.drawerItemText}>{item.label}</Text></Pressable>)}
+            <Text style={s.drawerSection}>SISTEMA</Text><Pressable style={s.drawerItem} onPress={() => navigate('/perfil', 'Meu Perfil')}><Ionicons name="settings-outline" size={20} color="#eee7db"/><Text allowFontScaling={false} style={s.drawerItemText}>Meu Perfil</Text></Pressable>
           </ScrollView>
-          <Pressable style={s.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db"/><Text style={s.drawerItemText}>Sair</Text></Pressable>
+          <Pressable style={s.drawerLogout} onPress={() => void logout()}><Ionicons name="log-out-outline" size={20} color="#eee7db"/><Text allowFontScaling={false} style={s.drawerItemText}>Sair</Text></Pressable>
         </SafeAreaView>
       </View>
     </Modal>
@@ -376,16 +435,20 @@ const s = StyleSheet.create({
   eyebrow: { fontSize: 13, color: C.gold, fontWeight: '700', marginBottom: 6 }, heading: { fontSize: 30, lineHeight: 42, color: C.ink, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
   intro: { fontSize: 14, lineHeight: 23, color: C.muted, marginTop: 6, marginBottom: 14 },
   backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 11, backgroundColor: C.white, marginBottom: 20 },
-  backText: { color: C.gold, fontSize: 13, fontWeight: '700' },
+  backText: { color: C.gold, fontSize: 13, fontWeight: '700', lineHeight: 21, minWidth: 120, flexShrink: 0, paddingRight: 7, includeFontPadding: true },
   panel: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 17, marginBottom: 14 },
   panelHeading: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 9 }, panelTitle: { color: C.ink, fontSize: 16, lineHeight: 26, fontWeight: '700', marginBottom: 7 },
   muted: { color: C.muted, fontSize: 12, lineHeight: 20, marginBottom: 10 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14, marginBottom: 16 }, chip: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: C.border },
-  chipActive: { backgroundColor: C.gold, borderColor: C.gold }, chipText: { color: C.muted, fontSize: 12, fontWeight: '700', lineHeight: 19 }, chipTextActive: { color: '#fff' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14, marginBottom: 16 }, chip: { flexShrink: 0, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: C.border },
+  chipActive: { backgroundColor: C.gold, borderColor: C.gold }, chipText: { color: C.muted, fontSize: 12, fontWeight: '700', lineHeight: 19, flexShrink: 0, includeFontPadding: true, paddingRight: 8 }, chipTextActive: { color: '#fff' },
   customPeriod: { gap: 7, marginBottom: 12 }, fieldLabel: { fontSize: 13, lineHeight: 22, fontWeight: '600', color: C.ink }, input: { borderWidth: 1, borderColor: C.border, borderRadius: 11, minHeight: 48, paddingHorizontal: 13, color: C.ink, fontSize: 14, marginBottom: 7 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9 }, dateInput: { flex: 1, minWidth: 0 }, calendarButton: { width: 52, height: 48, borderWidth: 1, borderColor: C.border, borderRadius: 11, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', justifyContent: 'center', alignItems: 'center', padding: 20 }, calendarPanel: { width: '100%', maxWidth: 380, backgroundColor: C.white, borderRadius: 17, padding: 15 },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15, gap: 4 }, calendarNav: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }, calendarHeading: { flex: 1, minWidth: 0, textAlign: 'center', fontSize: 14, lineHeight: 24, fontWeight: '700', color: C.ink },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' }, calendarCell: { width: '14.285714%', height: 43, alignItems: 'center', justifyContent: 'center' }, calendarWeekday: { fontSize: 12, fontWeight: '700', color: C.muted }, calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }, calendarDaySelected: { backgroundColor: C.gold }, calendarDayText: { width: 33, textAlign: 'center', fontSize: 13, lineHeight: 21, fontWeight: '600', color: C.ink, includeFontPadding: false }, calendarDayTextSelected: { color: C.white }, calendarClose: { alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 12, marginTop: 12 }, calendarCloseText: { minWidth: 74, textAlign: 'center', fontSize: 14, lineHeight: 22, fontWeight: '700', color: C.gold },
   periodLabel: { color: C.muted, fontSize: 12, marginVertical: 14 }, error: { color: C.red, fontSize: 13, lineHeight: 21 }, errorCard: { backgroundColor: '#fff2f2', borderWidth: 1, borderColor: '#fecaca', padding: 14, borderRadius: 12, marginBottom: 18 },
   retry: { color: C.red, fontWeight: '700', marginTop: 9 }, outlineButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', gap: 8, borderWidth: 1, borderColor: C.border, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 10 },
-  outlineText: { color: C.gold, fontWeight: '700', fontSize: 13 }, disabled: { opacity: 0.45 },
+  outlineText: { color: C.gold, fontWeight: '700', fontSize: 13, lineHeight: 21, minWidth: 81, flexShrink: 0, includeFontPadding: true, paddingRight: 7 }, disabled: { opacity: 0.45 },
   sectionWrap: { marginTop: 21 }, sectionTitle: { fontSize: 20, lineHeight: 30, fontWeight: '700', color: C.ink, marginBottom: 4 }, sectionSubtitle: { color: C.muted, fontSize: 12, lineHeight: 20, marginBottom: 15 },
   metric: { backgroundColor: C.white, borderRadius: 15, borderWidth: 1, borderColor: C.border, padding: 17, marginBottom: 10 },
   metricHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }, metricTitle: { flex: 1, fontSize: 14, lineHeight: 23, color: C.muted },
@@ -403,6 +466,6 @@ const s = StyleSheet.create({
   drawerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 19, borderBottomWidth: 1, borderBottomColor: '#ffffff22' },
   drawerLogo: { width: 56, height: 65 }, drawerBrandText: { flex: 1 }, drawerEyebrow: { color: '#d5bd91', fontSize: 10, letterSpacing: 2, fontWeight: '700' }, drawerTitle: { color: '#fff', fontSize: 21, fontFamily: 'serif' },
   drawerScroll: { flex: 1 }, drawerContent: { paddingHorizontal: 13, paddingTop: 22, paddingBottom: 28 }, drawerSection: { fontSize: 10, fontWeight: '700', color: '#b1a698', letterSpacing: 1.7, marginBottom: 12, marginTop: 18 },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 15, minHeight: 49, borderRadius: 10, marginBottom: 4 }, drawerActive: { backgroundColor: '#665949' }, drawerItemText: { fontSize: 14, lineHeight: 24, fontWeight: '600', color: '#eee7db' },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 15, minHeight: 49, borderRadius: 10, marginBottom: 4 }, drawerActive: { backgroundColor: '#665949' }, drawerItemText: { width: 185, flexShrink: 0, fontSize: 14, lineHeight: 24, fontWeight: '600', color: '#eee7db', includeFontPadding: true, paddingRight: 9 },
   drawerLogout: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 26, paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#ffffff22' },
 });
