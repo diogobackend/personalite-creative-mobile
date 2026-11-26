@@ -2,14 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
-    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable,
-    ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
-
 type Client = {
   userId: string;
   name: string;
@@ -20,7 +19,6 @@ type Client = {
   rg: string | null;
   birthDate: string | null;
 };
-
 type ClientForm = {
   name: string;
   email: string;
@@ -30,10 +28,8 @@ type ClientForm = {
   rg: string;
   birthDate: string;
 };
-
 type FieldKey = keyof ClientForm;
 type IconName = keyof typeof Ionicons.glyphMap;
-
 const COLORS = {
   background: '#f8f6f2', white: '#ffffff', ink: '#342d27', muted: '#766d63',
   gold: '#a98a58', border: '#e8e0d4', danger: '#b91c1c',
@@ -42,11 +38,9 @@ const GENERATED_EMAIL = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f
 const INITIAL_FORM: ClientForm = {
   name: '', email: '', phone: '', address: '', cpf: '', rg: '', birthDate: '',
 };
-
 function SafeText({ style, ...props }: ComponentProps<typeof Text>) {
   return <Text {...props} textBreakStrategy="simple" style={[styles.safeText, style]} />;
 }
-
 function messageForError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (error.response?.status === 401) return 'Sessão expirada ou inválida. Faça login novamente.';
@@ -58,7 +52,21 @@ function messageForError(error: unknown): string {
   }
   return error instanceof Error ? error.message : 'Erro inesperado.';
 }
-
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const maskDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  return digits.length <= 2 ? digits : digits.length <= 4 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+const isoToBr = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('/') : value;
+const brToIso = (value: string) => {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return null;
+  const [day, month, year] = value.split('/').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+const dateToBr = (value: Date) => `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}/${value.getFullYear()}`;
 function formatClientForm(client: Client): ClientForm {
   return {
     name: client.name ?? '',
@@ -67,10 +75,9 @@ function formatClientForm(client: Client): ClientForm {
     address: client.address ?? '',
     cpf: client.cpf ?? '',
     rg: client.rg ?? '',
-    birthDate: client.birthDate?.slice(0, 10) ?? '',
+    birthDate: isoToBr(client.birthDate?.slice(0, 10) ?? ''),
   };
 }
-
 function FormField({
   label, value, onChange, placeholder, icon, keyboardType = 'default', maxLength,
   multiline = false, autoCapitalize = 'sentences', error,
@@ -104,7 +111,21 @@ function FormField({
     </View>
   );
 }
-
+function BirthDateField({ value, onChange, onCalendar, error }: { value: string; onChange: (value: string) => void; onCalendar: () => void; error?: string }) {
+  return <View style={styles.field}>
+    <SafeText style={styles.label}>Data de nascimento</SafeText>
+    <View style={styles.dateRow}>
+      <View style={[styles.inputShell, styles.dateInputShell, !!error && styles.inputError]}>
+        <Ionicons name="calendar-outline" size={19} color={COLORS.gold} style={styles.inputIcon} />
+        <TextInput value={value} onChangeText={text => onChange(maskDate(text))} placeholder="DD/MM/AAAA" placeholderTextColor="#a8a29e" style={styles.input} maxLength={10} keyboardType="number-pad" />
+      </View>
+      <Pressable onPress={onCalendar} style={styles.calendarButton} accessibilityLabel="Abrir calendário de nascimento">
+        <Ionicons name="calendar-outline" size={23} color={COLORS.gold} />
+      </Pressable>
+    </View>
+    {!!error && <SafeText style={styles.errorText}>{error}</SafeText>}
+  </View>;
+}
 export default function EditarClienteScreen() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -114,9 +135,21 @@ export default function EditarClienteScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
-
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const offset = new Date(year, month, 1).getDay();
+    return [...Array.from({ length: offset }, () => null), ...Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => index + 1)];
+  }, [calendarMonth]);
+  function openCalendar() {
+    const iso = brToIso(form.birthDate);
+    const selected = iso ? new Date(`${iso}T12:00:00`) : new Date();
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setCalendarOpen(true);
+  }
   const detailRoute = `/clientes/${encodeURIComponent(id ?? '')}`;
-
   const loadClient = useCallback(async (signal: AbortSignal) => {
     if (!id) {
       setError('Cliente não identificado.');
@@ -147,18 +180,15 @@ export default function EditarClienteScreen() {
       if (!signal.aborted) setLoading(false);
     }
   }, [id]);
-
   useEffect(() => {
     const controller = new AbortController();
     void loadClient(controller.signal);
     return () => controller.abort();
   }, [loadClient]);
-
   function update(field: FieldKey, value: string) {
     setForm(previous => ({ ...previous, [field]: value }));
     setFieldErrors(previous => ({ ...previous, [field]: undefined }));
   }
-
   function validate(): boolean {
     const errors: Partial<Record<FieldKey, string>> = {};
     if (!form.name.trim()) errors.name = 'Informe o nome completo.';
@@ -173,9 +203,9 @@ export default function EditarClienteScreen() {
     if (form.birthDate) {
       const today = new Date();
       const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const parsed = new Date(`${form.birthDate}T12:00:00`);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate) || Number.isNaN(parsed.getTime()) || form.birthDate > localToday) {
-        errors.birthDate = 'Informe uma data válida (AAAA-MM-DD), não futura.';
+      const iso = brToIso(form.birthDate);
+      if (!iso || iso > localToday) {
+        errors.birthDate = 'Informe uma data válida (DD/MM/AAAA), não futura.';
       }
     }
     setFieldErrors(errors);
@@ -185,7 +215,6 @@ export default function EditarClienteScreen() {
     }
     return true;
   }
-
   async function save() {
     if (!client || !id || saving || !validate()) return;
     setSaving(true);
@@ -204,8 +233,7 @@ export default function EditarClienteScreen() {
       if (client.email && !GENERATED_EMAIL.test(client.email) && !email) payload.email = client.email;
       if (client.cpf == null && form.cpf.trim()) payload.cpf = form.cpf.trim();
       if (client.rg == null && form.rg.trim()) payload.rg = form.rg.trim();
-      if (client.birthDate == null && form.birthDate) payload.birthDate = form.birthDate;
-
+      if (client.birthDate == null && form.birthDate) payload.birthDate = brToIso(form.birthDate);
       await api.patch(`/users/${encodeURIComponent(id)}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -218,7 +246,6 @@ export default function EditarClienteScreen() {
       setSaving(false);
     }
   }
-
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -229,10 +256,9 @@ export default function EditarClienteScreen() {
         >
           <Pressable style={styles.backLink} onPress={() => router.replace(detailRoute as never)}>
             <Ionicons name="arrow-back-outline" color={COLORS.gold} size={20} />
-            <SafeText style={styles.backLabel}>Voltar aos dados do cliente</SafeText>
+            <SafeText style={styles.backLabel}>Voltar </SafeText>
           </Pressable>
           <SafeText style={styles.heading}>Editar cliente</SafeText>
-
           {loading ? (
             <View style={styles.loading}>
               <ActivityIndicator size="large" color={COLORS.gold} />
@@ -250,11 +276,9 @@ export default function EditarClienteScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.userIcon}><Ionicons name="person-outline" color={COLORS.gold} size={25} /></View>
                 <View style={styles.headerInfo}>
-                  <SafeText style={styles.cardTitle}>Dados cadastrais</SafeText>
                   <SafeText style={styles.helper}>Atualize as informações do cliente.</SafeText>
                 </View>
               </View>
-
               <FormField label="Nome completo" value={form.name} onChange={v => update('name', v)} maxLength={150}
                 placeholder="Nome do cliente" icon="person-outline" error={fieldErrors.name} />
               <FormField label="E-mail" value={form.email} onChange={v => update('email', v)} maxLength={255}
@@ -273,15 +297,11 @@ export default function EditarClienteScreen() {
                   placeholder="RG" icon="document-text-outline" error={fieldErrors.rg} />
               )}
               {client.birthDate == null && (
-                <FormField label="Data de nascimento (AAAA-MM-DD)" value={form.birthDate}
-                  onChange={v => update('birthDate', v)} maxLength={10}
-                  placeholder="Ex.: 2000-01-31" keyboardType="numbers-and-punctuation"
-                  icon="calendar-outline" error={fieldErrors.birthDate} />
+                <BirthDateField value={form.birthDate} onChange={v => update('birthDate', v)} onCalendar={openCalendar} error={fieldErrors.birthDate} />
               )}
-
               <View style={styles.actions}>
                 <Pressable onPress={() => router.replace(detailRoute as never)} style={styles.cancelButton} disabled={saving}>
-                  <SafeText style={styles.cancelLabel}>Cancelar</SafeText>
+                  <SafeText allowFontScaling={false} numberOfLines={1} style={styles.cancelLabel}>Cancelar</SafeText>
                 </Pressable>
                 <Pressable onPress={() => void save()} style={[styles.saveButton, saving && styles.disabled]} disabled={saving}>
                   {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save-outline" color="#fff" size={19} />}
@@ -292,11 +312,46 @@ export default function EditarClienteScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+        <Modal visible={calendarOpen} transparent animationType="fade" onRequestClose={() => setCalendarOpen(false)}>
+          <View style={styles.calendarBackdrop}><View style={styles.calendarPanel}>
+            <View style={styles.calendarHeader}>
+              <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))} style={styles.calendarNav} accessibilityLabel="Mês anterior"><Ionicons name="chevron-back" size={23} color={COLORS.gold} /></Pressable>
+              <SafeText allowFontScaling={false} style={styles.calendarHeading}>{MONTH_NAMES[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}</SafeText>
+              <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))} style={styles.calendarNav} accessibilityLabel="Próximo mês"><Ionicons name="chevron-forward" size={23} color={COLORS.gold} /></Pressable>
+            </View>
+            <View style={styles.calendarGrid}>
+              {WEEKDAYS.map((day, index) => <View key={`weekday-${index}`} style={styles.calendarCell}><SafeText style={styles.calendarWeekday}>{day}</SafeText></View>)}
+              {calendarDays.map((day, index) => {
+                const candidate = day ? new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day) : null;
+                const selected = candidate && dateToBr(candidate) === form.birthDate;
+                return <View key={`day-${index}`} style={styles.calendarCell}>{candidate && <Pressable onPress={() => { update('birthDate', dateToBr(candidate)); setCalendarOpen(false); }} style={[styles.calendarDay, selected && styles.calendarDaySelected]} accessibilityLabel={`Selecionar ${dateToBr(candidate)}`}><SafeText allowFontScaling={false} style={[styles.calendarDayText, selected && styles.calendarDayTextSelected]}>{day}</SafeText></Pressable>}</View>;
+              })}
+            </View>
+            <Pressable style={styles.calendarClose} onPress={() => setCalendarOpen(false)}><SafeText allowFontScaling={false} style={styles.calendarCloseText}>Fechar</SafeText></Pressable>
+          </View></View>
+        </Modal>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  dateInputShell: { flex: 1, minWidth: 0 },
+  calendarButton: { width: 52, height: 50, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  calendarPanel: { width: '100%', maxWidth: 380, backgroundColor: COLORS.white, borderRadius: 17, padding: 15 },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15, gap: 4 },
+  calendarNav: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  calendarHeading: { flex: 1, minWidth: 0, textAlign: 'center', fontSize: 14, lineHeight: 24, fontWeight: '700', color: COLORS.ink, textTransform: 'capitalize' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.285714%', height: 43, justifyContent: 'center', alignItems: 'center' },
+  calendarWeekday: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
+  calendarDay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
+  calendarDaySelected: { backgroundColor: COLORS.gold },
+  calendarDayText: { width: 33, fontSize: 13, lineHeight: 21, color: COLORS.ink, fontWeight: '600', textAlign: 'center', includeFontPadding: false },
+  calendarDayTextSelected: { color: COLORS.white },
+  calendarClose: { alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 12, marginTop: 12 },
+  calendarCloseText: { minWidth: 75, textAlign: 'center', color: COLORS.gold, fontSize: 14, lineHeight: 22, fontWeight: '700' },
+
   flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: COLORS.background },
   safeText: { includeFontPadding: true, paddingRight: 4 },
@@ -320,8 +375,8 @@ const styles = StyleSheet.create({
   multilineInput: { minHeight: 75, textAlignVertical: 'top' },
   errorText: { color: COLORS.danger, fontSize: 13, lineHeight: 22, marginTop: 5 },
   actions: { borderTopWidth: 1, borderTopColor: '#f0ece5', paddingTop: 20, marginTop: 9, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 10 },
-  cancelButton: { borderWidth: 1, borderColor: COLORS.border, minHeight: 48, paddingHorizontal: 17, paddingVertical: 11, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  cancelLabel: { color: COLORS.muted, fontSize: 13, lineHeight: 23, fontWeight: '700' },
+  cancelButton: { borderWidth: 1, borderColor: COLORS.border, minHeight: 48, minWidth: 112, paddingHorizontal: 13, paddingVertical: 11, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cancelLabel: { color: COLORS.muted, fontSize: 13, lineHeight: 23, fontWeight: '700', includeFontPadding: false, textAlign: 'center', minWidth: 78 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 7, minHeight: 48, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 11, backgroundColor: COLORS.gold },
   saveLabel: { color: '#fff', fontSize: 13, lineHeight: 23, fontWeight: '700' },
   disabled: { opacity: 0.6 },

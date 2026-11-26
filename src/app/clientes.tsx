@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 
 type IconName = keyof typeof Ionicons.glyphMap;
+
 type Client = {
   userId: string;
   name: string;
@@ -26,6 +27,7 @@ type Client = {
   createdAt: string;
   updatedAt: string;
 };
+
 type PageResponse<T> = {
   content: T[];
   page: number;
@@ -34,36 +36,44 @@ type PageResponse<T> = {
   totalElements: number;
   totalPages: number;
 };
+
 type Filters = {
-  name: string; email: string; login: string; phone: string; cpf: string;
+  name: string; email: string; phone: string; cpf: string;
   rg: string; address: string; status: string; birthDate: string;
   dateField: string; dateFrom: string; dateTo: string;
 };
+
 type Option = { value: string; label: string };
+
 type Picker = { title: string; value: string; options: Option[]; onSelect: (value: string) => void } | null;
 
 const C = {
   background: '#f8f6f2', white: '#ffffff', text: '#342d27', muted: '#766d63',
   gold: '#a98a58', border: '#e8e0d4', menu: '#39342f', placeholder: '#a8a29e',
 };
+
 const EMPTY: Filters = {
-  name: '', email: '', login: '', phone: '', cpf: '', rg: '', address: '',
+  name: '', email: '', phone: '', cpf: '', rg: '', address: '',
   status: '', birthDate: '', dateField: '', dateFrom: '', dateTo: '',
 };
+
 const SORT: Option[] = [
   { value: 'name', label: 'Nome' }, { value: 'email', label: 'E-mail' },
   { value: 'login', label: 'Login' }, { value: 'createdAt', label: 'Data de cadastro' },
   { value: 'updatedAt', label: 'Última atualização' },
 ];
+
 const STATUS: Option[] = [
   { value: '', label: 'Todas' }, { value: 'ACTIVE', label: 'Ativo' },
   { value: 'INACTIVE', label: 'Inativo' }, { value: 'BLOCKED', label: 'Bloqueado' },
 ];
+
 const DATE_FIELDS: Option[] = [
   { value: '', label: 'Selecione' }, { value: 'createdAt', label: 'Data de cadastro' },
   { value: 'updatedAt', label: 'Última atualização' },
   { value: 'birthDate', label: 'Data de nascimento' },
 ];
+
 const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
   { label: 'Produtos', icon: 'cube-outline', route: '/produtos' },
@@ -76,12 +86,52 @@ const MENU: { label: string; icon: IconName; route?: string }[] = [
   { label: 'Relatórios', icon: 'stats-chart-outline', route: '/relatorios' },
 ];
 
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+type DateFilterKey = 'birthDate' | 'dateFrom' | 'dateTo';
+
+const maskDate = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
+const toIsoDate = (value: string): string | null => {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return null;
+  const [day, month, year] = value.split('/').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+
+const toBrazilian = (date: Date): string =>
+  `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+
+function DateField({ label, value, onChange, onCalendar }: {
+  label: string; value: string; onChange: (value: string) => void; onCalendar: () => void;
+}) {
+  return <View style={s.field}>
+    <Text style={s.fieldLabel}>{label}</Text>
+    <View style={s.dateRow}>
+      <TextInput style={[s.input, s.dateInput]} value={value} onChangeText={v => onChange(maskDate(v))}
+        placeholder="DD/MM/AAAA" placeholderTextColor={C.placeholder} keyboardType="number-pad" maxLength={10} />
+      <Pressable style={s.calendarButton} onPress={onCalendar} accessibilityLabel={`Selecionar ${label} no calendário`}>
+        <Ionicons name="calendar-outline" size={23} color={C.gold} />
+      </Pressable>
+    </View>
+  </View>;
+}
+
 function visibleEmail(value: string | null): string {
   const email = value?.trim() ?? '';
   if (!email) return '';
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}@gmail\.com$/i.test(email)) return '';
   return email;
 }
+
 function errorText(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (error.response?.status === 401) return 'Sessão expirada ou inválida. Faça login novamente.';
@@ -91,9 +141,9 @@ function errorText(error: unknown): string {
   }
   return error instanceof Error ? error.message : 'Erro inesperado ao carregar clientes.';
 }
-
 // Sem numberOfLines, ellipsizeMode, adjustsFontSizeToFit ou flexShrink nos rótulos.
 // Permite quebra natural de linhas com altura suficiente para caracteres no Android.
+
 function Field({ label, value, onChange, placeholder, keyboardType = 'default' }: {
   label: string; value: string; onChange: (value: string) => void;
   placeholder?: string; keyboardType?: 'default' | 'email-address' | 'number-pad';
@@ -104,15 +154,22 @@ function Field({ label, value, onChange, placeholder, keyboardType = 'default' }
       placeholderTextColor={C.placeholder} keyboardType={keyboardType} autoCapitalize="none" />
   </View>;
 }
+
 function Button({ label, icon, onPress, secondary = false, disabled = false }: {
   label: string; icon?: IconName; onPress: () => void; secondary?: boolean; disabled?: boolean;
 }) {
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button"
     style={[s.button, secondary ? s.secondaryButton : s.primaryButton, disabled && s.disabled]}>
     {icon ? <Ionicons name={icon} size={18} color={secondary ? C.gold : C.white} /> : null}
-    <Text style={[s.buttonText, secondary ? s.secondaryButtonText : s.primaryButtonText]}>{label}</Text>
+    <Text
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="clip"
+      style={[s.buttonText, { width: Math.ceil(label.length * 9.5) + 16 }, secondary ? s.secondaryButtonText : s.primaryButtonText]}
+    >{label}</Text>
   </Pressable>;
 }
+
 function Detail({ label, value }: { label: string; value: string }) {
   return <View style={s.detail}>
     <Text style={s.detailLabel}>{label}</Text>
@@ -135,12 +192,25 @@ export default function ClientesScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [picker, setPicker] = useState<Picker>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [calendarField, setCalendarField] = useState<DateFilterKey | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const openCalendar = (field: DateFilterKey) => {
+    const iso = toIsoDate(draft[field]);
+    const date = iso ? new Date(`${iso}T12:00:00`) : new Date();
+    setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    setCalendarField(field);
+  };
+  const shiftMonth = (offset: number) => setCalendarMonth(previous => new Date(previous.getFullYear(), previous.getMonth() + offset, 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    return [...Array.from({ length: new Date(year, month, 1).getDay() }, () => null),
+      ...Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => index + 1)];
+  }, [calendarMonth]);
   const activeCount = useMemo(() => Object.values(applied).filter(value => value.trim()).length, [applied]);
-
   const update = (field: keyof Filters, value: string) => setDraft(current => ({ ...current, [field]: value }));
   const choose = (title: string, value: string, options: Option[], onSelect: (selected: string) => void) =>
     setPicker({ title, value, options, onSelect });
-
   const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError(null);
@@ -153,7 +223,7 @@ export default function ClientesScreen() {
       const params: Record<string, string | number> = { page, size, sortBy, direction, role: 'CANDIDATE' };
       (Object.keys(applied) as (keyof Filters)[]).forEach(key => {
         const value = applied[key].trim();
-        if (value) params[key] = value;
+        if (value) params[key] = key === 'birthDate' || key === 'dateFrom' || key === 'dateTo' ? toIsoDate(value) ?? value : value;
       });
       const { data } = await api.get<PageResponse<Client>>('/users', {
         params, signal, headers: { Authorization: `Bearer ${token}` },
@@ -171,19 +241,21 @@ export default function ClientesScreen() {
       if (!signal.aborted) { setLoading(false); setRefreshing(false); }
     }
   }, [applied, page, size, sortBy, direction]);
-
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
   }, [load, reloadKey]);
-
   function apply() {
+    if ((['birthDate', 'dateFrom', 'dateTo'] as DateFilterKey[]).some(key => draft[key] && !toIsoDate(draft[key]))) {
+      Alert.alert('Data inválida', 'Informe uma data válida no formato DD/MM/AAAA.');
+      return;
+    }
     if ((draft.dateFrom || draft.dateTo) && !draft.dateField) {
       Alert.alert('Verifique os filtros', 'Selecione qual data deseja filtrar no período.');
       return;
     }
-    if (draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo) {
+    if (draft.dateFrom && draft.dateTo && toIsoDate(draft.dateFrom)! > toIsoDate(draft.dateTo)!) {
       Alert.alert('Período inválido', 'A data inicial não pode ser posterior à data final.');
       return;
     }
@@ -217,7 +289,6 @@ export default function ClientesScreen() {
     </View>;
   const pageResult = result?.page ?? page;
   const total = result?.totalElements ?? 0;
-
   return <SafeAreaView edges={['top', 'bottom']} style={s.safe}>
     <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.topbar}>
@@ -235,34 +306,31 @@ export default function ClientesScreen() {
           onRefresh={() => { setRefreshing(true); setReloadKey(n => n + 1); }}
           colors={[C.gold]} tintColor={C.gold} />}>
         <View style={s.headingBlock}>
-          <Text style={s.heading}>Clientes</Text>
           <Button label="Cadastrar cliente" icon="add" onPress={() => router.push('/clientes/novo' as never)} />
         </View>
         <View style={s.panel}>
-          <Text style={s.sectionTitle}>Buscar clientes</Text>
           <Field label="Cliente" value={draft.name} onChange={v => update('name', v)} placeholder="Buscar pelo nome..." />
           <Field label="E-mail" value={draft.email} onChange={v => update('email', v)} placeholder="Buscar pelo e-mail..." keyboardType="email-address" />
           <View style={s.actions}>
             <Button label="Buscar" icon="search-outline" onPress={apply} />
-            <Button label={advanced ? 'Ocultar filtros' : 'Filtros'} icon="options-outline"
+            <Button label={advanced ? 'Ocultar filtros avançados' : 'Filtros avançados'} icon="options-outline"
               onPress={() => setAdvanced(current => !current)} secondary />
           </View>
           {advanced && <View style={s.advanced}>
             <Text style={s.sectionTitle}>Filtros avançados</Text>
-            <Field label="Login" value={draft.login} onChange={v => update('login', v)} placeholder="Login" />
             <Field label="Telefone" value={draft.phone} onChange={v => update('phone', v)} placeholder="Telefone" keyboardType="number-pad" />
             <Field label="CPF" value={draft.cpf} onChange={v => update('cpf', v)} placeholder="CPF" keyboardType="number-pad" />
             <Field label="RG" value={draft.rg} onChange={v => update('rg', v)} placeholder="RG" />
             <Field label="Endereço" value={draft.address} onChange={v => update('address', v)} placeholder="Endereço" />
             {selectField('Situação', draft.status, STATUS, v => update('status', v))}
-            <Field label="Data exata de nascimento (AAAA-MM-DD)" value={draft.birthDate}
-              onChange={v => update('birthDate', v)} placeholder="2000-01-31" />
+            <DateField label="Data de nascimento" value={draft.birthDate}
+              onChange={v => update('birthDate', v)} onCalendar={() => openCalendar('birthDate')} />
             <View style={s.period}>
               <Text style={s.periodTitle}>Filtrar por período</Text>
               <Text style={s.helper}>Escolha uma data e informe o início e/ou fim do período.</Text>
               {selectField('Qual data?', draft.dateField, DATE_FIELDS, v => update('dateField', v))}
-              <Field label="De (AAAA-MM-DD)" value={draft.dateFrom} onChange={v => update('dateFrom', v)} placeholder="2026-01-01" />
-              <Field label="Até (AAAA-MM-DD)" value={draft.dateTo} onChange={v => update('dateTo', v)} placeholder="2026-12-31" />
+              <DateField label="De -" value={draft.dateFrom} onChange={v => update('dateFrom', v)} onCalendar={() => openCalendar('dateFrom')} />
+              <DateField label="Até -" value={draft.dateTo} onChange={v => update('dateTo', v)} onCalendar={() => openCalendar('dateTo')} />
             </View>
             <View style={s.actions}>
               <Button label={`Limpar filtros${activeCount ? ` (${activeCount})` : ''}`} secondary icon="close-outline" onPress={clear} />
@@ -271,7 +339,6 @@ export default function ClientesScreen() {
           </View>}
         </View>
         <View style={s.panel}>
-          <Text style={s.sectionTitle}>Clientes cadastrados</Text>
           <Text style={s.helper}>{loading ? 'Carregando...' : `${total} cliente(s) encontrado(s)`}{activeCount ? ` · ${activeCount} filtro(s) aplicado(s)` : ''}</Text>
           {selectField('Ordenar por', sortBy, SORT, v => { setSortBy(v); setPage(0); })}
           <View style={s.twoColumns}>
@@ -301,14 +368,49 @@ export default function ClientesScreen() {
             <Text style={s.helper}>Exibindo {result.totalElementsThisPage} de {total} cliente(s) · Página {pageResult + 1} de {Math.max(result.totalPages, 1)}</Text>
             <View style={s.actions}>
               <Button label="Anterior" icon="chevron-back-outline" secondary disabled={pageResult <= 0} onPress={() => setPage(p => Math.max(0, p - 1))} />
-              <Button label="Próxima" icon="chevron-forward-outline" secondary disabled={pageResult + 1 >= result.totalPages} onPress={() => setPage(p => p + 1)} />
+              <Button label="Próximo" icon="chevron-forward-outline" secondary disabled={pageResult + 1 >= result.totalPages} onPress={() => setPage(p => p + 1)} />
             </View>
           </View>}
         </View>
         <Text style={s.footer}>Personalité Creative · Sistema de gestão</Text>
       </ScrollView>
     </KeyboardAvoidingView>
-
+    <Modal visible={calendarField !== null} transparent animationType="fade" onRequestClose={() => setCalendarField(null)}>
+      <View style={s.calendarBackdrop}>
+        <View style={s.calendarPanel}>
+          <View style={s.calendarHeader}>
+            <Pressable onPress={() => shiftMonth(-1)} style={s.calendarNav} accessibilityLabel="Mês anterior">
+              <Ionicons name="chevron-back" size={23} color={C.gold} />
+            </Pressable>
+            <Text allowFontScaling={false} style={s.calendarHeading}>
+              {MONTH_NAMES[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}
+            </Text>
+            <Pressable onPress={() => shiftMonth(1)} style={s.calendarNav} accessibilityLabel="Próximo mês">
+              <Ionicons name="chevron-forward" size={23} color={C.gold} />
+            </Pressable>
+          </View>
+          <View style={s.calendarGrid}>
+            {WEEKDAYS.map((day, index) => <View key={`weekday-${index}`} style={s.calendarCell}>
+              <Text style={s.calendarWeekday}>{day}</Text>
+            </View>)}
+            {calendarDays.map((day, index) => {
+              const candidate = day ? new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day) : null;
+              const selected = candidate && calendarField ? toBrazilian(candidate) === draft[calendarField] : false;
+              return <View key={`day-${index}`} style={s.calendarCell}>
+                {candidate && <Pressable style={[s.calendarDay, selected && s.calendarDaySelected]}
+                  onPress={() => { if (calendarField) update(calendarField, toBrazilian(candidate)); setCalendarField(null); }}
+                  accessibilityLabel={`Selecionar ${toBrazilian(candidate)}`}>
+                  <Text allowFontScaling={false} style={[s.calendarDayText, selected && s.calendarDayTextSelected]}>{day}</Text>
+                </Pressable>}
+              </View>;
+            })}
+          </View>
+          <Pressable style={s.calendarClose} onPress={() => setCalendarField(null)}>
+            <Text allowFontScaling={false} style={s.calendarCloseText}>Fechar</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
     <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
       <View style={s.modalOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} accessibilityLabel="Fechar seleção" />
@@ -327,7 +429,6 @@ export default function ClientesScreen() {
         </View>
       </View>
     </Modal>
-
     <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)} statusBarTranslucent>
       <View style={s.menuOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="Fechar menu" />
@@ -375,13 +476,30 @@ const s = StyleSheet.create({
   field: { marginBottom: 14, minWidth: 0 },
   fieldLabel: { fontSize: 13, lineHeight: 23, fontWeight: '600', color: C.text, marginBottom: 7, includeFontPadding: true },
   input: { minHeight: 48, borderWidth: 1, borderColor: C.border, borderRadius: 11, paddingHorizontal: 13, paddingVertical: 9, fontSize: 14, color: C.text, includeFontPadding: true },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  dateInput: { flex: 1, minWidth: 0 },
+  calendarButton: { width: 52, height: 49, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', padding: 20, justifyContent: 'center', alignItems: 'center' },
+  calendarPanel: { width: '100%', maxWidth: 380, padding: 15, borderRadius: 17, backgroundColor: C.white },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 15 },
+  calendarHeading: { flex: 1, minWidth: 0, color: C.text, fontSize: 14, lineHeight: 25, fontWeight: '700', textAlign: 'center', textTransform: 'capitalize', includeFontPadding: false },
+  calendarNav: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.285714%', height: 43, alignItems: 'center', justifyContent: 'center' },
+  calendarWeekday: { color: C.muted, fontSize: 12, fontWeight: '700' },
+  calendarDay: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarDaySelected: { backgroundColor: C.gold },
+  calendarDayText: { width: 34, color: C.text, fontSize: 13, lineHeight: 21, fontWeight: '600', includeFontPadding: false, textAlign: 'center' },
+  calendarDayTextSelected: { color: C.white },
+  calendarClose: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 12, marginTop: 12 },
+  calendarCloseText: { width: 78, color: C.gold, fontWeight: '700', fontSize: 14, lineHeight: 21, textAlign: 'center', includeFontPadding: false },
   select: { minHeight: 49, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 13, paddingVertical: 11, borderWidth: 1, borderColor: C.border, borderRadius: 11 },
   selectText: { flex: 1, fontSize: 13, lineHeight: 22, color: C.text, includeFontPadding: true },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end', marginTop: 9 },
-  button: { minHeight: 46, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  button: { minHeight: 46, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 11, flexDirection: 'row', flexWrap: 'nowrap', flexShrink: 0, alignItems: 'center', justifyContent: 'center', gap: 5, alignSelf: 'flex-start' },
   primaryButton: { backgroundColor: C.gold },
   secondaryButton: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border },
-  buttonText: { fontSize: 13, lineHeight: 23, fontWeight: '700', includeFontPadding: true },
+  buttonText: { fontSize: 13, lineHeight: 22, fontWeight: '700', includeFontPadding: false, flexShrink: 0 },
   primaryButtonText: { color: C.white },
   secondaryButtonText: { color: '#80623d' },
   disabled: { opacity: 0.4 },
