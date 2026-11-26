@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
-    Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform,
+  Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
@@ -46,7 +46,7 @@ const FIELDS: ProfileField[] = [
   { key: 'cpf', label: 'CPF' },
   { key: 'rg', label: 'RG' },
   { key: 'address', label: 'Endereço' },
-  { key: 'birthDate', label: 'Data de nascimento', placeholder: 'AAAA-MM-DD' },
+  { key: 'birthDate', label: 'Data de nascimento', placeholder: 'DD/MM/AAAA' },
 ];
 const MENU: { label: string; icon: IconName; route: string }[] = [
   { label: 'Visão geral', icon: 'grid-outline', route: '/home' },
@@ -80,11 +80,27 @@ function getUserIdFromToken(token: string): string {
   return sub;
 }
 
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const maskDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  return digits.length <= 2 ? digits : digits.length <= 4 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+function toIsoDate(value: string): string {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return '';
+  const [day, month, year] = value.split('/').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return '';
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+const toBrazilian = (value: Date) => `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}/${value.getFullYear()}`;
+const fromIsoDate = (value: string | null | undefined) => value && /^\d{4}-\d{2}-\d{2}/.test(value) ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : '';
+
 function toForm(user: User): FormData {
   return {
     name: user.name ?? '', email: user.email ?? '', login: user.login ?? '',
     phone: user.phone ?? '', cpf: user.cpf ?? '', rg: user.rg ?? '',
-    address: user.address ?? '', birthDate: user.birthDate?.slice(0, 10) ?? '',
+    address: user.address ?? '', birthDate: fromIsoDate(user.birthDate),
   };
 }
 function dateLabel(value: string | null): string {
@@ -112,7 +128,7 @@ function Action({ label, icon, onPress, disabled = false, secondary = false }: {
 }) {
   return <Pressable onPress={onPress} disabled={disabled} style={[s.action, secondary ? s.actionSecondary : s.actionPrimary, disabled && s.disabled]}>
     <Ionicons name={icon} size={17} color={secondary ? C.ink : '#fff'} />
-    <Text style={[s.actionLabel, secondary && s.actionSecondaryLabel]}>{label}</Text>
+    <Text allowFontScaling={false} numberOfLines={1} style={[s.actionLabel, { minWidth: Math.ceil(label.length * 7) + 10 }, secondary && s.actionSecondaryLabel]}>{label}</Text>
   </Pressable>;
 }
 
@@ -130,6 +146,20 @@ export default function PerfilScreen() {
   const [repeatPassword, setRepeatPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const offset = new Date(year, month, 1).getDay();
+    return [...Array.from({ length: offset }, () => null), ...Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) => index + 1)];
+  }, [calendarMonth]);
+  const openCalendar = () => {
+    const iso = toIsoDate(form.birthDate);
+    const selected = iso ? new Date(`${iso}T12:00:00`) : new Date();
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setCalendarOpen(true);
+  };
 
   const loadUser = useCallback(async () => {
     setLoading(true);
@@ -165,12 +195,18 @@ export default function PerfilScreen() {
       if ((key === 'cpf' && user.cpf?.trim()) || (key === 'rg' && user.rg?.trim())) continue;
       const original = user[key] ?? '';
       const current = form[key].trim();
-      if (current && current !== original) payload[key] = current;
+      if (key === 'birthDate') {
+        if (current) {
+          const converted = toIsoDate(current);
+          if (!converted) { Alert.alert('Data inválida', 'Informe uma data válida em DD/MM/AAAA.'); return; }
+          const today = new Date();
+          const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          if (converted > todayIso) { Alert.alert('Data inválida', 'A data de nascimento não pode ser futura.'); return; }
+          if (converted !== original.slice(0, 10)) payload.birthDate = converted;
+        }
+      } else if (current && current !== original) payload[key] = current;
     }
     if (!Object.keys(payload).length) { Alert.alert('Perfil', 'Nenhuma alteração foi realizada.'); return; }
-    if (payload.birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(payload.birthDate)) {
-      Alert.alert('Data inválida', 'Informe a data no formato AAAA-MM-DD.'); return;
-    }
     setSaving(true);
     try {
       const token = await SecureStore.getItemAsync('access_token');
@@ -236,10 +272,24 @@ export default function PerfilScreen() {
     const text = editing ? form[key] : key === 'birthDate' ? (user.birthDate ? dateLabel(user.birthDate) : '') : (user[key] ?? '');
     return <View key={key} style={s.field}>
       <View style={s.fieldHeading}>
-        <Text style={s.fieldLabel}>{label}</Text>
+        <Text allowFontScaling={false} style={[s.fieldLabel, { width: Math.ceil(label.length * 10) + 36 }]}>{label}</Text>
         {editing && locked && <Ionicons name="lock-closed-outline" size={15} color={C.gold} />}
       </View>
-      {editing ? <TextInput
+      {editing ? key === 'birthDate' ? <View style={s.dateRow}>
+        <TextInput
+          style={[s.input, s.dateInput]}
+          editable={!saving}
+          value={form.birthDate}
+          onChangeText={value => setForm(previous => ({ ...previous, birthDate: maskDate(value) }))}
+          placeholder="DD/MM/AAAA"
+          placeholderTextColor="#aaa29a"
+          keyboardType="number-pad"
+          maxLength={10}
+        />
+        <Pressable onPress={openCalendar} style={s.calendarButton} accessibilityLabel="Selecionar data de nascimento no calendário" disabled={saving}>
+          <Ionicons name="calendar-outline" size={23} color={C.gold} />
+        </Pressable>
+      </View> : <TextInput
         style={[s.input, locked && s.inputLocked]}
         editable={!locked && !saving} value={form[key]}
         onChangeText={value => setForm(previous => ({ ...previous, [key]: value }))}
@@ -277,7 +327,7 @@ export default function PerfilScreen() {
               <View style={s.identity}>
                 <View style={s.avatar}><Text style={s.initials}>{initials(user.name) || 'P'}</Text></View>
                 <View style={s.identityInfo}><Text style={s.name}>{user.name}</Text></View>
-                <View style={s.status}><Text style={s.statusText}>{statusLabel(user.status)}</Text></View>
+                <View style={s.status}><Text allowFontScaling={false} style={s.statusText}>{statusLabel(user.status)}</Text></View>
               </View>
               <View style={s.fields}>
                 {FIELDS.map(renderField)}
@@ -287,11 +337,11 @@ export default function PerfilScreen() {
                 </View> : null}
                 <View style={s.divider} />
                 <View style={s.field}>
-                  <Text style={s.fieldLabel}>Data de cadastro</Text>
+                  <Text allowFontScaling={false} style={[s.fieldLabel, { width: 200 }]}>Data de cadastro</Text>
                   <View style={s.readonly}><Text style={s.value}>{dateLabel(user.createdAt)}</Text></View>
                 </View>
                 <View style={s.field}>
-                  <Text style={s.fieldLabel}>Última atualização</Text>
+                  <Text allowFontScaling={false} style={[s.fieldLabel, { width: 210 }]}>Última atualização</Text>
                   <View style={s.readonly}><Text style={s.value}>{dateLabel(user.updatedAt)}</Text></View>
                 </View>
                 <View style={s.divider} />
@@ -311,7 +361,7 @@ export default function PerfilScreen() {
                     ['Repetir senha nova', repeatPassword, setRepeatPassword],
                   ] as [string, string, (value: string) => void][]).map(([label, value, onChange]) =>
                     <View key={label} style={s.field}>
-                      <Text style={s.fieldLabel}>{label}</Text>
+                      <Text allowFontScaling={false} style={[s.fieldLabel, { width: Math.ceil(label.length * 10) + 36 }]}>{label}</Text>
                       <TextInput style={s.input} secureTextEntry value={value} onChangeText={onChange}
                         editable={!savingPassword} autoCapitalize="none" autoCorrect={false} />
                     </View>)}
@@ -323,6 +373,28 @@ export default function PerfilScreen() {
           </>}
       </ScrollView>
     </KeyboardAvoidingView>
+    <Modal visible={calendarOpen} transparent animationType="fade" onRequestClose={() => setCalendarOpen(false)}>
+      <View style={s.calendarBackdrop}>
+        <View style={s.calendarPanel}>
+          <View style={s.calendarHeader}>
+            <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear() - 1, current.getMonth(), 1))} style={s.calendarNav} accessibilityLabel="Ano anterior"><Ionicons name="chevron-back" size={16} color={C.gold} /><Text style={s.calendarNavText}>Ano</Text></Pressable>
+            <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))} style={s.calendarNav} accessibilityLabel="Mês anterior"><Ionicons name="chevron-back" size={21} color={C.gold} /></Pressable>
+            <Text allowFontScaling={false} style={s.calendarHeading}>{MONTH_NAMES[calendarMonth.getMonth()]} de {calendarMonth.getFullYear()}</Text>
+            <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))} style={s.calendarNav} accessibilityLabel="Próximo mês"><Ionicons name="chevron-forward" size={21} color={C.gold} /></Pressable>
+            <Pressable onPress={() => setCalendarMonth(current => new Date(current.getFullYear() + 1, current.getMonth(), 1))} style={s.calendarNav} accessibilityLabel="Próximo ano"><Text style={s.calendarNavText}>Ano</Text><Ionicons name="chevron-forward" size={16} color={C.gold} /></Pressable>
+          </View>
+          <View style={s.calendarGrid}>
+            {WEEKDAYS.map((weekday, index) => <View key={`weekday-${index}`} style={s.calendarCell}><Text style={s.calendarWeekday}>{weekday}</Text></View>)}
+            {calendarDays.map((day, index) => {
+              const candidate = day ? new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day) : null;
+              const selected = candidate ? toBrazilian(candidate) === form.birthDate : false;
+              return <View key={`day-${index}`} style={s.calendarCell}>{candidate && <Pressable onPress={() => { setForm(previous => ({ ...previous, birthDate: toBrazilian(candidate) })); setCalendarOpen(false); }} style={[s.calendarDay, selected && s.calendarDaySelected]} accessibilityLabel={`Selecionar ${toBrazilian(candidate)}`}><Text allowFontScaling={false} style={[s.calendarDayText, selected && s.calendarDayTextSelected]}>{day}</Text></Pressable>}</View>;
+            })}
+          </View>
+          <Pressable onPress={() => setCalendarOpen(false)} style={s.calendarClose}><Text allowFontScaling={false} style={s.calendarCloseText}>Fechar</Text></Pressable>
+        </View>
+      </View>
+    </Modal>
     <Modal visible={menuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setMenuOpen(false)}>
       <View style={s.menuOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
@@ -335,15 +407,15 @@ export default function PerfilScreen() {
           <ScrollView style={s.flex} contentContainerStyle={s.drawerContent}>
             <Text style={s.drawerSection}>MENU PRINCIPAL</Text>
             {MENU.map(item => <Pressable key={item.label} style={s.drawerItem} onPress={() => { setMenuOpen(false); router.push(item.route as never); }}>
-              <Ionicons name={item.icon} size={19} color="#eee7db" /><Text style={s.drawerItemText}>{item.label}</Text>
+              <Ionicons name={item.icon} size={19} color="#eee7db" /><Text allowFontScaling={false} style={s.drawerItemText}>{item.label}</Text>
             </Pressable>)}
             <Text style={s.drawerSection}>SISTEMA</Text>
             <Pressable style={[s.drawerItem, s.drawerActive]} onPress={() => setMenuOpen(false)}>
-              <Ionicons name="settings-outline" size={19} color="#fff" /><Text style={s.drawerItemText}>Meu Perfil</Text>
+              <Ionicons name="settings-outline" size={19} color="#fff" /><Text allowFontScaling={false} style={s.drawerItemText}>Meu Perfil</Text>
             </Pressable>
           </ScrollView>
           <Pressable style={s.drawerLogout} onPress={() => void logout()}>
-            <Ionicons name="log-out-outline" size={20} color="#eee7db" /><Text style={s.drawerItemText}>Sair</Text>
+            <Ionicons name="log-out-outline" size={20} color="#eee7db" /><Text allowFontScaling={false} style={s.drawerItemText}>Sair</Text>
           </Pressable>
         </SafeAreaView>
       </View>
@@ -359,18 +431,18 @@ const s = StyleSheet.create({
   content: { padding: 17, paddingBottom: 40 }, feedback: { alignItems: 'center', padding: 40, gap: 15 },
   error: { color: '#b91c1c', fontSize: 14, textAlign: 'center' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, marginBottom: 15 },
-  action: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
+  action: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 10, gap: 4 },
   actionPrimary: { backgroundColor: C.green }, actionSecondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.border },
-  actionLabel: { color: '#fff', fontSize: 13, fontWeight: '700' }, actionSecondaryLabel: { color: C.ink }, disabled: { opacity: 0.45 },
+  actionLabel: { color: '#fff', fontSize: 11.5, lineHeight: 21, fontWeight: '700', flexShrink: 0, textAlign: 'center', includeFontPadding: true, paddingRight: 5 }, actionSecondaryLabel: { color: C.ink }, disabled: { opacity: 0.45 },
   card: { borderRadius: 17, overflow: 'hidden', borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
   identity: { backgroundColor: '#fcfaf7', padding: 19, flexDirection: 'row', alignItems: 'center', gap: 11, borderBottomWidth: 1, borderBottomColor: C.border, flexWrap: 'wrap' },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#f0e5d2', alignItems: 'center', justifyContent: 'center' },
   initials: { fontSize: 17, fontWeight: '700', color: C.gold }, identityInfo: { flex: 1, minWidth: 105 },
   name: { fontSize: 22, lineHeight: 30, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', color: C.ink },
   status: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e8dfd0', borderRadius: 17, paddingHorizontal: 12, paddingVertical: 7 },
-  statusText: { fontSize: 12, color: '#947646', fontWeight: '700' },
+  statusText: { fontSize: 12, lineHeight: 21, color: '#947646', fontWeight: '700', minWidth: 60, paddingRight: 8, textAlign: 'center', includeFontPadding: true },
   fields: { padding: 18, gap: 15 }, field: { gap: 7 }, fieldHeading: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#8b7b68' },
+  fieldLabel: { fontSize: 12, lineHeight: 22, fontWeight: '700', color: '#8b7b68', flexShrink: 0, paddingRight: 20, includeFontPadding: true },
   readonly: { backgroundColor: '#faf9f7', borderWidth: 1, borderColor: '#eee8df', borderRadius: 11, minHeight: 46, paddingHorizontal: 13, paddingVertical: 12, justifyContent: 'center' },
   value: { color: C.ink, fontSize: 14, lineHeight: 21 }, placeholder: { color: '#a8a29e' },
   input: { borderRadius: 11, borderWidth: 1, borderColor: '#e7dfd4', minHeight: 46, backgroundColor: '#fff', paddingHorizontal: 13, paddingVertical: 10, fontSize: 14, color: C.ink },
@@ -381,7 +453,14 @@ const s = StyleSheet.create({
   sectionTitle: { color: C.ink, fontSize: 16, fontWeight: '700' },
   choiceRow: { flexDirection: 'row', gap: 10 },
   choice: { borderRadius: 10, borderWidth: 1, borderColor: C.border, minWidth: 75, paddingHorizontal: 17, paddingVertical: 10, alignItems: 'center' },
-  choiceSelected: { borderColor: C.green, backgroundColor: C.green }, choiceText: { color: C.ink, fontWeight: '600' }, choiceSelectedText: { color: '#fff' },
+  choiceSelected: { borderColor: C.green, backgroundColor: C.green }, choiceText: {
+  color: C.ink,
+  fontWeight: '600',
+  minWidth: 45,
+  textAlign: 'center',
+  includeFontPadding: true,
+  paddingRight: 6,
+}, choiceSelectedText: { color: '#fff' },
   passwordPanel: { gap: 15, padding: 15, borderWidth: 1, borderColor: C.border, borderRadius: 12 },
   menuOverlay: { flex: 1, backgroundColor: '#0008', flexDirection: 'row' },
   drawer: { width: '82%', maxWidth: 310, height: '100%', backgroundColor: C.menu },
@@ -391,6 +470,24 @@ const s = StyleSheet.create({
   drawerContent: { paddingHorizontal: 13, paddingTop: 24, paddingBottom: 27 },
   drawerSection: { color: '#b1a698', fontSize: 10, fontWeight: '700', letterSpacing: 1.7, marginBottom: 14, marginTop: 18 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, minHeight: 49, gap: 12, borderRadius: 10, marginBottom: 3 },
-  drawerActive: { backgroundColor: '#665949' }, drawerItemText: { flex: 1, color: '#eee7db', fontSize: 14, fontWeight: '600' },
+  drawerActive: { backgroundColor: '#665949' }, drawerItemText: { flex: 1, minWidth: 0, color: '#eee7db', fontSize: 14, lineHeight: 24, paddingRight: 10, includeFontPadding: true, fontWeight: '600' },
   drawerLogout: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 27, paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#ffffff22' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  dateInput: { flex: 1, minWidth: 0 },
+  calendarButton: { width: 52, height: 46, borderWidth: 1, borderColor: C.border, borderRadius: 11, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+  calendarBackdrop: { flex: 1, backgroundColor: '#0009', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  calendarPanel: { width: '100%', maxWidth: 380, backgroundColor: C.card, borderRadius: 17, padding: 15 },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15, gap: 2 },
+  calendarNav: { width: 37, height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  calendarNavText: { fontSize: 10, fontWeight: '700', color: C.gold },
+  calendarHeading: { flex: 1, minWidth: 0, textAlign: 'center', fontSize: 12, lineHeight: 22, fontWeight: '700', color: C.ink, textTransform: 'capitalize' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calendarCell: { width: '14.285714%', height: 43, justifyContent: 'center', alignItems: 'center' },
+  calendarWeekday: { color: C.muted, fontSize: 12, fontWeight: '700' },
+  calendarDay: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
+  calendarDaySelected: { backgroundColor: C.gold },
+  calendarDayText: { width: 33, fontSize: 13, lineHeight: 21, color: C.ink, fontWeight: '600', textAlign: 'center', includeFontPadding: false },
+  calendarDayTextSelected: { color: C.card },
+  calendarClose: { alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 12, marginTop: 12 },
+  calendarCloseText: { width: 74, textAlign: 'center', color: C.gold, fontSize: 14, lineHeight: 22, fontWeight: '700' },
 });
